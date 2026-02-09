@@ -4,7 +4,7 @@ public class Token {
     public enum TokenTipo { 
         Identificador, PalabraReservada, NumEntero, NumFracc, OpMAS, OpMENOS, OpMULTI, CMPMEN, CMPMAY, Asignacion, PuntoComa,
         LlaveAbre, LlaveCierra, ParentAbre, ParentCierra, EOF, Invalido,
-        Class, Boolean, Int, Float, While, Print, True, False, If, Else
+        Class, Boolean, Int, Float, While, Print, True, False
     }   
 
     public final TokenTipo tipo;

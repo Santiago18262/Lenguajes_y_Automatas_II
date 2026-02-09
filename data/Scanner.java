@@ -11,7 +11,7 @@ public class Scanner {
 
     // Listado de palabras reservadas
     private static String[] PALABRAS_RESERVADAS = {
-        "print", "class", "boolean", "int", "float", "while", "true", "false", "if", "else"
+        "print", "class", "boolean", "int", "float", "while", "true", "false"
     };
 
     public Scanner(String codigo) {
@@ -22,7 +22,7 @@ public class Scanner {
 
     // Recorre el texto y hace la lista de tokens
     private void analizar() {
-        int posicion = 0, longitud = codigoFuente.length();
+        int posicion = 0, longitud = codigoFuente.length(); // Posición actual y longitud total del código fuente
 
         while (posicion < longitud) {
             char caracter = codigoFuente.charAt(posicion);
