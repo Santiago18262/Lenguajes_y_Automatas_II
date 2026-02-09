@@ -44,8 +44,14 @@ public class Interface extends JFrame {
         JPanel norte = new JPanel(new BorderLayout());
         norte.add(titulo, BorderLayout.NORTH);
 
+        // Obtenemos el tamaño de la pantalla para ajustar los paneles
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        // Esto define que el ancho de la columna izquierda sea la mitad de la pantalla
+        Dimension dimPaneles = new Dimension(screenSize.width / 2, screenSize.height / 2);
+        
         // Fila única en uso (Programa, Tokens)
         JPanel filaSuperior = new JPanel(new GridLayout(1, 2, 10, 10));
+        filaSuperior.setPreferredSize(dimPaneles);
 
         // Programa
         JPanel panelPrograma = new JPanel(new BorderLayout());
@@ -88,7 +94,7 @@ public class Interface extends JFrame {
     
         getContentPane().setLayout(new BorderLayout(10, 10));
         getContentPane().add(norte, BorderLayout.NORTH);
-        getContentPane().add(centro, BorderLayout.CENTER);
+        getContentPane().add(centro, BorderLayout.WEST);
     }
 
     private void analizarLexico() {
