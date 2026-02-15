@@ -39,18 +39,6 @@ public class Scanner {
                 while (j < longitud && Character.isLetterOrDigit(codigoFuente.charAt(j))) j++;
                 String palabra = codigoFuente.substring(posicion, j);
 
-                // Si hay símbolo inválido pegado al final, marcar todo hasta el siguiente espacio como inválido
-                if (j < longitud) {
-                    char sig = codigoFuente.charAt(j);
-                    if (!Character.isWhitespace(sig) && !Character.isLetterOrDigit(sig) && !esSimboloValido(sig)) {
-                        int k = j + 1;
-                        while (k < longitud && !Character.isWhitespace(codigoFuente.charAt(k))) k++;
-                        listaTokens.add(new Token(Token.TokenTipo.Invalido, codigoFuente.substring(posicion, k)));
-                        posicion = k;
-                        continue;
-                    }
-                }
-
                 Token.TokenTipo tipoReservada = obtenerTipoReservada(palabra);
                 if (tipoReservada != Token.TokenTipo.Invalido) {
                     listaTokens.add(new Token(tipoReservada, palabra));
@@ -153,11 +141,11 @@ public class Scanner {
                 continue; 
             }
 
-            // 5) Símbolo desconocido: inválido hasta el siguiente espacio
-            int k = posicion;
-            while (k < longitud && !Character.isWhitespace(codigoFuente.charAt(k))) k++;
-            listaTokens.add(new Token(Token.TokenTipo.Invalido, codigoFuente.substring(posicion, k)));
-            posicion = k;
+            // 5) Símbolo desconocido: marcar el caracter invalido
+            if (!Character.isWhitespace(caracter)) {
+                listaTokens.add(new Token(Token.TokenTipo.Invalido, String.valueOf(caracter)));
+            }
+            posicion++;
         }
 
         // EOF

@@ -5,8 +5,11 @@ import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import data.Scanner;
+import data.Parser;
 import data.Token;
 
 public class Interface extends JFrame {
@@ -25,6 +28,12 @@ public class Interface extends JFrame {
     };
     private JTable tablaTokens = new JTable(modeloTabla);
 
+    // Botones
+    private JButton btnParser;
+
+    // Ultima lista de tokens
+    private List<Token> ultimaLista;     // tokens del último análisis léxico
+
     public Interface() {
         super("MicroJavaCompiler");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -36,22 +45,16 @@ public class Interface extends JFrame {
     private void initComponents() {
         // Título
         JLabel titulo = new JLabel("MicroJavaCompiler");
-        titulo.setFont(new Font("SansSerif", Font.BOLD, 32));
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 30));
         titulo.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
 
         Dimension tamanoReducido = new Dimension(800, 500);
 
         JPanel norte = new JPanel(new BorderLayout());
         norte.add(titulo, BorderLayout.NORTH);
-
-        // Obtenemos el tamaño de la pantalla para ajustar los paneles
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        // Esto define que el ancho de la columna izquierda sea la mitad de la pantalla
-        Dimension dimPaneles = new Dimension(screenSize.width / 2, screenSize.height / 2);
         
         // Fila única en uso (Programa, Tokens)
-        JPanel filaSuperior = new JPanel(new GridLayout(1, 2, 10, 10));
-        filaSuperior.setPreferredSize(dimPaneles);
+        JPanel filaSuperior = new JPanel(new GridLayout(1, 3, 10, 10));
 
         // Programa
         JPanel panelPrograma = new JPanel(new BorderLayout());
@@ -82,10 +85,29 @@ public class Interface extends JFrame {
         JPanel contenedorSuperior = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 20));
         contenedorSuperior.add(filaSuperior);
 
+        // Errores
+        JPanel panelErrores = new JPanel(new BorderLayout());
+        panelErrores.setBorder(new TitledBorder("Errores"));
+        ((TitledBorder)panelErrores.getBorder()).setTitleFont(new Font("SansSerif", Font.BOLD, 22));
+
+        JPanel barraErrores = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
+        btnParser = new JButton("Parser");
+        btnParser.setFont(new Font("SansSerif", Font.BOLD, 22));
+        btnParser.setEnabled(false);
+        btnParser.addActionListener(e -> ejecutarParser());
+        barraErrores.add(btnParser);
+
+        panelErrores.add(barraErrores, BorderLayout.NORTH);
+
+        areaErrores.setEditable(false);
+        areaErrores.setFont(new Font("Consolas", Font.PLAIN, 22));
+        panelErrores.add(new JScrollPane(areaErrores), BorderLayout.CENTER);
+
         filaSuperior.add(panelPrograma);
         filaSuperior.add(panelTokens);
+        filaSuperior.add(panelErrores);
 
-        JPanel filaInferior = new JPanel(new GridLayout(1, 2, 10, 10));
+        JPanel filaInferior = new JPanel(new GridLayout(1, 3, 10, 10));
 
         JPanel centro = new JPanel(new GridLayout(2, 1, 10, 10));
         centro.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
@@ -94,7 +116,7 @@ public class Interface extends JFrame {
     
         getContentPane().setLayout(new BorderLayout(10, 10));
         getContentPane().add(norte, BorderLayout.NORTH);
-        getContentPane().add(centro, BorderLayout.WEST);
+        getContentPane().add(centro, BorderLayout.CENTER);
     }
 
     private void analizarLexico() {
@@ -108,28 +130,70 @@ public class Interface extends JFrame {
 
         int errores = 0;
         StringBuilder sb = new StringBuilder();
+        List<Token> tmp = new ArrayList<>();
 
         while (true) {
             Token tk = analizador.siguienteToken();
+            tmp.add(tk);
+
+            // Agregamos TODAS las filas, incluyendo EOF (se pintará gris en el renderer)
             modeloTabla.addRow(new Object[]{ tk.tipo, tk.valor });
 
             if (tk.tipo == Token.TokenTipo.Invalido) {
                 errores++;
+                sb.append("Error léxico: token inválido -> ").append(tk.valor).append('\n');
             }
             if (tk.tipo == Token.TokenTipo.EOF) break;
         }
 
+        ultimaLista = tmp;
         if (errores > 0) {
+            areaErrores.setForeground(Color.RED);
+            areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
+            areaErrores.setText(sb.toString());
+            btnParser.setEnabled(false);
             JOptionPane.showMessageDialog(this,
                     "Se detectaron " + errores + " error(es) léxico(s).",
                     "Análisis con errores",
                     JOptionPane.WARNING_MESSAGE);
         } else {
+            areaErrores.setForeground(new Color(0, 128, 0));
+            areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
+            areaErrores.setText("Análisis léxico correcto.\n");
+            btnParser.setEnabled(true);
             JOptionPane.showMessageDialog(this,
                     "Análisis léxico correcto.",
                     "Éxito", JOptionPane.INFORMATION_MESSAGE);
         }
         tablaTokens.repaint();
+    }
+
+        /** Llama a Parser.analizar() y muestra resultado en CI y Errores. */
+    private void ejecutarParser() {
+        if (ultimaLista == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Primero ejecuta Tokens.",
+                    "Información", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Parser p = new Parser(ultimaLista);
+        boolean exito = p.analizar();
+
+        if (exito) {
+            areaErrores.setForeground(new Color(0, 128, 0));
+            areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
+            areaErrores.setText("Análisis sintáctico correcto.\n");
+            JOptionPane.showMessageDialog(this,
+                    "El análisis sintáctico se completó sin errores.",
+                    "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            areaErrores.setForeground(Color.RED);
+            areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
+            areaErrores.setText("SYNTAX ERROR\n\n" + p.getErrores());
+            JOptionPane.showMessageDialog(this,
+                    "Se encontraron errores sintácticos.",
+                    "Errores", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private static class ValidaRenderer extends DefaultTableCellRenderer {
