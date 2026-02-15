@@ -11,7 +11,7 @@ public class Scanner {
 
     // Listado de palabras reservadas
     private static String[] PALABRAS_RESERVADAS = {
-        "print", "class", "boolean", "int", "float", "while", "true", "false"
+        "class", "boolean", "int", "while", "true", "false"
     };
 
     public Scanner(String codigo) {
@@ -49,38 +49,16 @@ public class Scanner {
                 continue;
             }
 
-            // 3) Número entero o fraccional
+            // 3) Número entero 
             if (Character.isDigit(caracter)) {
                 int j = posicion + 1;
                 while (j < longitud && Character.isDigit(codigoFuente.charAt(j))) {
                     j++;
                 }
 
-                int finLectura = j;
-                boolean esFraccional = false;
-
-                // Verificamos si sigue un punto decimal para un Float
-                if (j < longitud && codigoFuente.charAt(j) == '.') {
-                    int k = j + 1;
-                    // Requiere al menos un dígito después del punto 
-                    if (k < longitud && Character.isDigit(codigoFuente.charAt(k))) {
-                        while (k < longitud && Character.isDigit(codigoFuente.charAt(k))) {
-                            k++;
-                        }
-                        finLectura = k;
-                        esFraccional = true;
-                    }
-                    // Si no hay dígitos después del punto, el número termina en 'j' 
-                    // y el '.' será procesado como inválido en la siguiente vuelta.
-                }
-
-                String palabra = codigoFuente.substring(posicion, finLectura);
-                if (esFraccional) {
-                    listaTokens.add(new Token(Token.TokenTipo.NumFracc, palabra));
-                } else {
-                    listaTokens.add(new Token(Token.TokenTipo.NumEntero, palabra));
-                }
-                posicion = finLectura;
+                String palabra = codigoFuente.substring(posicion, j);
+                listaTokens.add(new Token(Token.TokenTipo.NumEntero, palabra));
+                posicion = j;
                 continue;
             }
 

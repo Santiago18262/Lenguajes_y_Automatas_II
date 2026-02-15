@@ -2,9 +2,9 @@ package data;
 
 public class Token {
     public enum TokenTipo { 
-        Identificador, PalabraReservada, NumEntero, NumFracc, OpMAS, OpMENOS, OpMULTI, CMPMEN, CMPMAY, Asignacion, PuntoComa,
+        Identificador, PalabraReservada, NumEntero, OpMAS, OpMENOS, OpMULTI, CMPMEN, CMPMAY, Asignacion, PuntoComa,
         LlaveAbre, LlaveCierra, ParentAbre, ParentCierra, EOF, Invalido,
-        Class, Boolean, Int, Float, While, Print, True, False
+        Class, Boolean, Int, While, True, False
     }   
 
     public final TokenTipo tipo;

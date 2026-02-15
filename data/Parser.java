@@ -10,25 +10,22 @@ public class Parser {
     public static final int C_CLASS = 1;
     public static final int C_BOOLEAN = 2;
     public static final int C_INT = 3;
-    public static final int C_FLOAT = 4;
-    public static final int C_WHILE = 5;
-    public static final int C_PRINT = 6;
-    public static final int C_TRUE = 7;
-    public static final int C_FALSE = 8;
-    public static final int C_PUNTOCOMA = 9;
-    public static final int C_LLAVEABRE = 10;
-    public static final int C_LLAVECIERRA = 11;
-    public static final int C_PARENTABRE = 12;
-    public static final int C_PARENTCIERRA = 13;
-    public static final int C_OPMAS = 14;
-    public static final int C_OPMENOS = 15;
-    public static final int C_OPMULTI = 16;
-    public static final int C_CMPMAY = 17;
-    public static final int C_CMPMEN = 18;
-    public static final int C_ASIGNACION = 19;
-    public static final int C_IDENTIFICADOR = 20;
-    public static final int C_NUMENTERO = 21;
-    public static final int C_NUMFRACC = 22;
+    public static final int C_WHILE = 4;
+    public static final int C_TRUE = 5;
+    public static final int C_FALSE = 6;
+    public static final int C_PUNTOCOMA = 7;
+    public static final int C_LLAVEABRE = 8;
+    public static final int C_LLAVECIERRA = 9;
+    public static final int C_PARENTABRE = 10;
+    public static final int C_PARENTCIERRA = 11;
+    public static final int C_OPMAS = 12;
+    public static final int C_OPMENOS = 13;
+    public static final int C_OPMULTI = 14;
+    public static final int C_CMPMAY = 15;
+    public static final int C_CMPMEN = 16;
+    public static final int C_ASIGNACION = 17;
+    public static final int C_IDENTIFICADOR = 18;
+    public static final int C_NUMENTERO = 19;
 
     public Parser(List<Token> tokens) { this.listaTokens = tokens; }
 
@@ -45,7 +42,6 @@ public class Parser {
                     }
                     break;
                 case NumEntero: token.codigo = C_NUMENTERO; break;
-                case NumFracc: token.codigo = C_NUMFRACC; break;
                 case PuntoComa: token.codigo = C_PUNTOCOMA; break;
                 case LlaveAbre: token.codigo = C_LLAVEABRE; break;
                 case LlaveCierra: token.codigo = C_LLAVECIERRA; break;
@@ -67,9 +63,7 @@ public class Parser {
             case "class": return C_CLASS;
             case "boolean": return C_BOOLEAN;
             case "int": return C_INT;
-            case "float": return C_FLOAT;
             case "while": return C_WHILE;
-            case "print": return C_PRINT;
             case "true": return C_TRUE;
             case "false": return C_FALSE;
             default: return 0;
@@ -82,7 +76,7 @@ public class Parser {
         return resultado;
     }
 
-    /** Program → class Identifier { DeclarationList StatementList } EOF */
+    /** Programa → class Identificador { ListaDeclaración ListaSentencias } EOF */
     public boolean parsearProgram() {
         int inicio = posicionActual;
         if (tokenActualEs(C_CLASS)) {
@@ -91,8 +85,8 @@ public class Parser {
                 posicionActual++;
                 if (tokenActualEs(C_LLAVEABRE)) {
                     posicionActual++;
-                    if (parsearDeclarationList()) {
-                        if (parsearStatementList()) {
+                    if (parsearListaDeclaracion()) {
+                        if (parsearListaSentencias()) {
                             if (tokenActualEs(C_LLAVECIERRA)) {
                                 posicionActual++;
                                 if (esEOF()) return true;
@@ -106,16 +100,16 @@ public class Parser {
         return false;
     }
 
-    /** DeclarationList → [[VarDeclaration]]* */
-    public boolean parsearDeclarationList() {
+    /** ListaDeclaracion → [[DeclaracionVar;]]* */
+    public boolean parsearListaDeclaracion() {
         boolean encontrado = false;
-        while (parsearVarDeclaration()) encontrado = true;
+        while (parsearDeclaracionVar()) encontrado = true;
         if (!encontrado) return true;
         return true;
     }
 
-    /** VarDeclaration → Type Identifier ; */
-    public boolean parsearVarDeclaration() {
+    /** DeclaracionVar → TipoDato Identificador ; */
+    public boolean parsearDeclaracionVar() {
         int inicio = posicionActual;
         if (parsearType()) {
             posicionActual++;
@@ -131,17 +125,16 @@ public class Parser {
         return false;
     }
 
-    /** StatementList → [[Statement]]* */
-    public boolean parsearStatementList() {
+    /** ListaSentencias → [[Sentencias]]* */
+    public boolean parsearListaSentencias() {
         boolean encontrado = false;
-        while (parsearStatement()) encontrado = true;
+        while (parsearSentencias()) encontrado = true;
         if (!encontrado) return true;
         return true;
     }
 
-    /** Statement → while (BoolExpression){StatementList} | if (BoolExpression) {StatementList} [else { StatementList}] 
-     * | Identifier=Expression; | Identifier=BoolExpression; */
-    public boolean parsearStatement() {
+    /** Sentencias → while (ExpresionBooleana){ListaSentencias} | Identificador=Expresion; | Identificador=ExpresionBooleana; */
+    public boolean parsearSentencias() {
         int inicio = posicionActual;
         if (tokenActualEs(C_WHILE)) { if (parsearWhile()) return true; }
         posicionActual = inicio;
@@ -150,7 +143,7 @@ public class Parser {
         return false;
     }
 
-    /** while ( ExpressionBooleana ) { StatementList } */
+    /** while ( ExpressionBooleana ) { ListaSentencias } */
     public boolean parsearWhile() {
         int inicio = posicionActual;
         if (tokenActualEs(C_WHILE)) {
@@ -162,7 +155,7 @@ public class Parser {
                         posicionActual++;
                         if (tokenActualEs(C_LLAVEABRE)) {
                             posicionActual++;
-                            if (parsearStatementList()) {
+                            if (parsearListaSentencias()) {
                                 if (tokenActualEs(C_LLAVECIERRA)) {
                                     posicionActual++;
                                     return true;
@@ -177,7 +170,7 @@ public class Parser {
         return false;
     }
     
-    /** Identifier = Expression ; */
+    /** Identificador = Expresion ; */
     public boolean parsearAsignacion() {
         int inicio = posicionActual;
         if (tokenActualEs(C_IDENTIFICADOR)) {
@@ -196,7 +189,7 @@ public class Parser {
         return false;
     }
 
-    /** Identifier = ExpressionBooleana ; */
+    /** Identificador = ExpresionBooleana ; */
     public boolean parsearAsignacionBooleana() {
         int inicio = posicionActual;
         if (tokenActualEs(C_IDENTIFICADOR)) {
@@ -215,7 +208,7 @@ public class Parser {
         return false;
     }
 
-    /** Expression → Termino (OP Termino)* */
+    /** Expresion → Expresion OP Expresion */
     public boolean parsearExpresion() {
         int inicio=posicionActual;
         if (parsearTermino()) {
@@ -226,7 +219,7 @@ public class Parser {
                     posicionActual++;
                 } else {
                     posicionActual=inicio;
-                    return false;
+                    return false;   
                 }
             }
             return true;
@@ -235,10 +228,10 @@ public class Parser {
         return false;
     }
 
-    /** Termino → Identifier | NumEntero | NumFracc */
-    public boolean parsearTermino() { return tokenActualEs(C_IDENTIFICADOR) || tokenActualEs(C_NUMENTERO) || tokenActualEs(C_NUMFRACC); }
+    /** Expresion → Identifier | NumEntero */
+    public boolean parsearTermino() { return tokenActualEs(C_IDENTIFICADOR) || tokenActualEs(C_NUMENTERO); }
 
-    /** BoolExpression → Termino CMP Termino | true | false */
+    /** ExpresionBooleana → Expresion CMP Expresion | true | false */
     public boolean parsearExpresionBooleana() {
         int inicio = posicionActual;
         if (tokenActualEs(C_TRUE) || tokenActualEs(C_FALSE)) { posicionActual++; return true; }
@@ -261,8 +254,8 @@ public class Parser {
     /** CMP → > | < */
     public boolean parsearComparador() { return tokenActualEs(C_CMPMAY) || tokenActualEs(C_CMPMEN); }
 
-    /** Type → int | boolean | float */
-    public boolean parsearType() { return tokenActualEs(C_INT) || tokenActualEs(C_BOOLEAN) || tokenActualEs(C_FLOAT); }
+    /** TipoDato → boolean | int */
+    public boolean parsearType() { return tokenActualEs(C_INT) || tokenActualEs(C_BOOLEAN); }
 
     private boolean tokenActualEs(int codigoEsperado) {
         if (posicionActual < listaTokens.size()) return listaTokens.get(posicionActual).codigo == codigoEsperado;
