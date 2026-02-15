@@ -52,93 +52,42 @@ public class Scanner {
             // 3) Número entero o fraccional
             if (Character.isDigit(caracter)) {
                 int j = posicion + 1;
-                while (j < longitud && Character.isDigit(codigoFuente.charAt(j))) j++;
-
-                // Letras pegadas al número = inválido hasta espacio
-                if (j < longitud && Character.isLetter(codigoFuente.charAt(j))) {
-                    int k = j + 1;
-                    while (k < longitud && !Character.isWhitespace(codigoFuente.charAt(k))) k++;
-                    listaTokens.add(new Token(Token.TokenTipo.Invalido, codigoFuente.substring(posicion, k)));
-                    posicion = k;
-                    continue;
+                while (j < longitud && Character.isDigit(codigoFuente.charAt(j))) {
+                    j++;
                 }
 
-                // Punto decimal
+                int finLectura = j;
+                boolean esFraccional = false;
+
+                // Verificamos si sigue un punto decimal para un Float
                 if (j < longitud && codigoFuente.charAt(j) == '.') {
                     int k = j + 1;
-
-                    // Requiere al menos un dígito después del punto
+                    // Requiere al menos un dígito después del punto 
                     if (k < longitud && Character.isDigit(codigoFuente.charAt(k))) {
-                        while (k < longitud && Character.isDigit(codigoFuente.charAt(k))) k++;
-
-                        // Letras pegadas después del punto = inválido hasta espacio
-                        if (k < longitud && Character.isLetter(codigoFuente.charAt(k))) {
-                            int m = k + 1;
-                            while (m < longitud && !Character.isWhitespace(codigoFuente.charAt(m))) m++;
-                            listaTokens.add(new Token(Token.TokenTipo.Invalido, codigoFuente.substring(posicion, m)));
-                            posicion = m;
-                            continue;
+                        while (k < longitud && Character.isDigit(codigoFuente.charAt(k))) {
+                            k++;
                         }
-
-                        // Símbolo inválido después del punto = inválido hasta espacio
-                        if (k < longitud) {
-                            char s = codigoFuente.charAt(k);
-                            if (!Character.isWhitespace(s) && !Character.isLetterOrDigit(s) && !esSimboloValido(s)) {
-                                int m = k + 1;
-                                while (m < longitud && !Character.isWhitespace(codigoFuente.charAt(m))) m++;
-                                listaTokens.add(new Token(Token.TokenTipo.Invalido, codigoFuente.substring(posicion, m)));
-                                posicion = m;
-                                continue;
-                            }
-                        }
-
-                        listaTokens.add(new Token(Token.TokenTipo.NumFracc, codigoFuente.substring(posicion, k)));
-                        posicion = k;
-                        continue;
-                    } else {
-                        // Punto sin dígito = inválido hasta espacio
-                        int k2 = j + 1;
-                        while (k2 < longitud && !Character.isWhitespace(codigoFuente.charAt(k2))) k2++;
-                        listaTokens.add(new Token(Token.TokenTipo.Invalido, codigoFuente.substring(posicion, k2)));
-                        posicion = k2;
-                        continue;
+                        finLectura = k;
+                        esFraccional = true;
                     }
+                    // Si no hay dígitos después del punto, el número termina en 'j' 
+                    // y el '.' será procesado como inválido en la siguiente vuelta.
                 }
 
-                // Símbolo inválido pegado a entero = inválido hasta espacio
-                if (j < longitud) {
-                    char s = codigoFuente.charAt(j);
-                    if (!Character.isWhitespace(s) && !Character.isLetterOrDigit(s) && !esSimboloValido(s)) {
-                        int k = j + 1;
-                        while (k < longitud && !Character.isWhitespace(codigoFuente.charAt(k))) k++;
-                        listaTokens.add(new Token(Token.TokenTipo.Invalido, codigoFuente.substring(posicion, k)));
-                        posicion = k;
-                        continue;
-                    }
+                String palabra = codigoFuente.substring(posicion, finLectura);
+                if (esFraccional) {
+                    listaTokens.add(new Token(Token.TokenTipo.NumFracc, palabra));
+                } else {
+                    listaTokens.add(new Token(Token.TokenTipo.NumEntero, palabra));
                 }
-
-                // Entero válido
-                listaTokens.add(new Token(Token.TokenTipo.NumEntero, codigoFuente.substring(posicion, j)));
-                posicion = j;
+                posicion = finLectura;
                 continue;
             }
 
-            // 4A) Operadores aritméticos (+ - *)
-            if (procesarOperador(caracter)) { 
+            // 4) Procesar simbolos individuales: + - * < > = ; { } ( ) 
+            if (procesarSimbolos(caracter)) { 
                 posicion++; 
-                continue; 
-            }
-
-            // 4B) Comparadores (< > =)
-            if (procesarComparador(caracter)) { 
-                posicion++; 
-                continue; 
-            }
-
-            // 4C) Otros símbolos (; { } ( ))
-            if (procesarOtrosSimbolos(caracter)) { 
-                posicion++; 
-                continue; 
+                continue;
             }
 
             // 5) Símbolo desconocido: marcar el caracter invalido
@@ -158,7 +107,7 @@ public class Scanner {
             case '+': case '-': case '*':
             case '<': case '>': case '=':
             case ';': case '{': case '}':
-            case '(': case ')':
+            case '(': case ')': 
                 return true;
             default:
                 return false;
@@ -175,33 +124,21 @@ public class Scanner {
     }
 
     // OP: + - *
-    private boolean procesarOperador(char c) {
-        switch (c) {
-            case '+': listaTokens.add(new Token(Token.TokenTipo.OpMAS, "+"));    return true;
-            case '-': listaTokens.add(new Token(Token.TokenTipo.OpMENOS, "-"));  return true;
-            case '*': listaTokens.add(new Token(Token.TokenTipo.OpMULTI, "*"));  return true;
-            default:  return false;
-        }
-    }
-
     // CMP: < > =
-    private boolean procesarComparador(char c) {
+    // Otros símbolos: ; { } ( )
+    private boolean procesarSimbolos(char c) {
         switch (c) {
-            case '<': listaTokens.add(new Token(Token.TokenTipo.CMPMEN, "<"));   return true;
-            case '>': listaTokens.add(new Token(Token.TokenTipo.CMPMAY, ">"));   return true;
-            case '=': listaTokens.add(new Token(Token.TokenTipo.Asignacion, "=")); return true;
-            default:  return false;
-        }
-    }
-
-    // Otros símbolos: ; { } ( )6 
-    private boolean procesarOtrosSimbolos(char c) {
-        switch (c) {
-            case ';': listaTokens.add(new Token(Token.TokenTipo.PuntoComa, ";"));      return true;
-            case '{': listaTokens.add(new Token(Token.TokenTipo.LlaveAbre, "{"));      return true;
-            case '}': listaTokens.add(new Token(Token.TokenTipo.LlaveCierra, "}"));    return true;
-            case '(': listaTokens.add(new Token(Token.TokenTipo.ParentAbre, "("));     return true;
-            case ')': listaTokens.add(new Token(Token.TokenTipo.ParentCierra, ")"));   return true;
+            case '+': listaTokens.add(new Token(Token.TokenTipo.OpMAS, "+"));        return true;
+            case '-': listaTokens.add(new Token(Token.TokenTipo.OpMENOS, "-"));      return true;
+            case '*': listaTokens.add(new Token(Token.TokenTipo.OpMULTI, "*"));      return true;
+            case '<': listaTokens.add(new Token(Token.TokenTipo.CMPMEN, "<"));       return true;
+            case '>': listaTokens.add(new Token(Token.TokenTipo.CMPMAY, ">"));       return true;
+            case '=': listaTokens.add(new Token(Token.TokenTipo.Asignacion, "="));   return true; 
+            case ';': listaTokens.add(new Token(Token.TokenTipo.PuntoComa, ";"));    return true;
+            case '{': listaTokens.add(new Token(Token.TokenTipo.LlaveAbre, "{"));    return true;
+            case '}': listaTokens.add(new Token(Token.TokenTipo.LlaveCierra, "}"));  return true;
+            case '(': listaTokens.add(new Token(Token.TokenTipo.ParentAbre, "("));   return true;
+            case ')': listaTokens.add(new Token(Token.TokenTipo.ParentCierra, ")")); return true;
             default:  return false;
         }
     }
