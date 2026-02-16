@@ -28,7 +28,7 @@ public class Scanner {
             char caracter = codigoFuente.charAt(posicion);
 
             // 1) Saltar espacios en blanco
-            if (Character.isWhitespace(caracter)) { 
+            if (Character.isWhitespace(caracter)) {
                 posicion++; 
                 continue; 
             }
@@ -77,19 +77,6 @@ public class Scanner {
 
         // EOF
         listaTokens.add(new Token(Token.TokenTipo.EOF, ""));
-    }
-
-    // Símbolos permitidos pegados a palabras/números
-    private boolean esSimboloValido(char c) {
-        switch (c) {
-            case '+': case '-': case '*':
-            case '<': case '>': case '=':
-            case ';': case '{': case '}':
-            case '(': case ')': 
-                return true;
-            default:
-                return false;
-        }
     }
 
     // Si el lexema está en la lista, es PalabraReservada; sino Invalido
