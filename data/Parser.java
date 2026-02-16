@@ -111,7 +111,7 @@ public class Parser {
     /** DeclaracionVar → TipoDato Identificador ; */
     public boolean parsearDeclaracionVar() {
         int inicio = posicionActual;
-        if (parsearType()) {
+        if (parsearTipoDato()) {
             posicionActual++;
             if (tokenActualEs(C_IDENTIFICADOR)) {
                 posicionActual++;
@@ -124,6 +124,9 @@ public class Parser {
         posicionActual = inicio;
         return false;
     }
+
+    /** TipoDato → boolean | int */
+    public boolean parsearTipoDato() { return tokenActualEs(C_INT) || tokenActualEs(C_BOOLEAN); }
 
     /** ListaSentencias → [[Sentencias]]* */
     public boolean parsearListaSentencias() {
@@ -208,6 +211,23 @@ public class Parser {
         return false;
     }
 
+    /** ExpresionBooleana → Expresion CMP Expresion | true | false */
+    public boolean parsearExpresionBooleana() {
+        int inicio = posicionActual;
+        if (tokenActualEs(C_TRUE) || tokenActualEs(C_FALSE)) { posicionActual++; return true; }
+        if (parsearTermino()) {
+            posicionActual++;
+            if (parsearComparador()) {
+                posicionActual++;
+                if (parsearTermino())
+                    posicionActual++;
+                	return true;
+            }
+        }
+        posicionActual = inicio;
+        return false;
+    }
+
     /** Expresion → Expresion OP Expresion */
     public boolean parsearExpresion() {
         int inicio=posicionActual;
@@ -231,31 +251,11 @@ public class Parser {
     /** Expresion → Identifier | NumEntero */
     public boolean parsearTermino() { return tokenActualEs(C_IDENTIFICADOR) || tokenActualEs(C_NUMENTERO); }
 
-    /** ExpresionBooleana → Expresion CMP Expresion | true | false */
-    public boolean parsearExpresionBooleana() {
-        int inicio = posicionActual;
-        if (tokenActualEs(C_TRUE) || tokenActualEs(C_FALSE)) { posicionActual++; return true; }
-        if (parsearTermino()) {
-            posicionActual++;
-            if (parsearComparador()) {
-                posicionActual++;
-                if (parsearTermino())
-                    posicionActual++;
-                	return true;
-            }
-        }
-        posicionActual = inicio;
-        return false;
-    }
-
     /** OP → + | - | * */
     public boolean parsearOperador() { return tokenActualEs(C_OPMAS) || tokenActualEs(C_OPMENOS) || tokenActualEs(C_OPMULTI); }
 
     /** CMP → > | < */
     public boolean parsearComparador() { return tokenActualEs(C_CMPMAY) || tokenActualEs(C_CMPMEN); }
-
-    /** TipoDato → boolean | int */
-    public boolean parsearType() { return tokenActualEs(C_INT) || tokenActualEs(C_BOOLEAN); }
 
     private boolean tokenActualEs(int codigoEsperado) {
         if (posicionActual < listaTokens.size()) return listaTokens.get(posicionActual).codigo == codigoEsperado;

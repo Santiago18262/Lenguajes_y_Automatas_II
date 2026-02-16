@@ -1,0 +1,6 @@
+class ErrorCuatro {
+    int i;
+    i = 0;
+    while (10 > i) 
+        i = i + 1;
+}
