@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import data.Scanner;
+import data.Semantico;
 import data.Parser;
 import data.Token;
 
@@ -29,7 +30,9 @@ public class Interface extends JFrame {
     private JTable tablaTokens = new JTable(modeloTabla);
 
     // Botones
+    private JButton btnTokens;
     private JButton btnParser;
+    private JButton btnSemantico;
 
     // Ultima lista de tokens
     private List<Token> ultimaLista;     // tokens del último análisis léxico
@@ -69,7 +72,7 @@ public class Interface extends JFrame {
         ((TitledBorder)panelTokens.getBorder()).setTitleFont(new Font("SansSerif", Font.BOLD, 22));
 
         JPanel barraTokens = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        JButton btnTokens = new JButton("Tokens");
+        btnTokens = new JButton("Tokens");
         btnTokens.setFont(new Font("SansSerif", Font.BOLD, 22));
         btnTokens.addActionListener(e -> analizarLexico());
         barraTokens.add(btnTokens);
@@ -96,6 +99,12 @@ public class Interface extends JFrame {
         btnParser.setEnabled(false);
         btnParser.addActionListener(e -> ejecutarParser());
         barraErrores.add(btnParser);
+
+        btnSemantico = new JButton("Semantico");
+        btnSemantico.setFont(new Font("SansSerif", Font.BOLD, 22));
+        btnSemantico.setEnabled(false);
+        btnSemantico.addActionListener(e -> ejecutarSemantico());
+        barraErrores.add(btnSemantico);
 
         panelErrores.add(barraErrores, BorderLayout.NORTH);
 
@@ -151,7 +160,7 @@ public class Interface extends JFrame {
             areaErrores.setForeground(Color.RED);
             areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
             areaErrores.setText(sb.toString());
-            btnParser.setEnabled(false);
+            btnParser.setEnabled(false); // Habilitar Parser cuando Lexico este correcto
             JOptionPane.showMessageDialog(this,
                     "Se detectaron " + errores + " error(es) léxico(s).",
                     "Análisis con errores",
@@ -168,7 +177,7 @@ public class Interface extends JFrame {
         tablaTokens.repaint();
     }
 
-        /** Llama a Parser.analizar() y muestra resultado en CI y Errores. */
+    /** Llama a Parser.analizar() y muestra resultado en CI y Errores. */
     private void ejecutarParser() {
         if (ultimaLista == null) {
             JOptionPane.showMessageDialog(this,
@@ -183,6 +192,7 @@ public class Interface extends JFrame {
             areaErrores.setForeground(new Color(0, 128, 0));
             areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
             areaErrores.setText("Análisis sintáctico correcto.\n");
+            btnSemantico.setEnabled(true); // Habilitar Semántico cuando Parser este correcto
             JOptionPane.showMessageDialog(this,
                     "El análisis sintáctico se completó sin errores.",
                     "Éxito", JOptionPane.INFORMATION_MESSAGE);
@@ -193,6 +203,35 @@ public class Interface extends JFrame {
             JOptionPane.showMessageDialog(this,
                     "Se encontraron errores sintácticos.",
                     "Errores", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Llama a Semantico.analizar()
+    private void ejecutarSemantico() {
+        if (ultimaLista == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Primero ejecuta Tokens.",
+                    "Información", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        // Reutilizamos los mismos tokens que ya fueron codificados por Parser en ejecutarParser()
+        Semantico s = new Semantico(ultimaLista);
+        boolean ok = s.analizar(); // dentro de Semantico se puede mostrar UI adicional
+
+        if (ok) {
+            areaErrores.setForeground(new Color(0, 128, 0));
+            areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
+            areaErrores.setText("Análisis semántico correcto.\n");
+            JOptionPane.showMessageDialog(this,
+                    "El análisis semántico se completó sin errores.",
+                    "Semántico", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            areaErrores.setForeground(Color.RED);
+            areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
+            areaErrores.setText("SEMANTIC ERROR\n\n" + s.getErrores());
+            JOptionPane.showMessageDialog(this,
+                    "Se encontraron errores semánticos.",
+                    "Semántico", JOptionPane.ERROR_MESSAGE);
         }
     }
 

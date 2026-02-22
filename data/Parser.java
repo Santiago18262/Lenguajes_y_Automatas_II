@@ -72,12 +72,12 @@ public class Parser {
 
     public boolean analizar() {
         asignarCodigos();
-        boolean resultado = parsearProgram();
+        boolean resultado = parsearPrograma();
         return resultado;
     }
 
     /** Programa → class Identificador { ListaDeclaración ListaSentencias } EOF */
-    public boolean parsearProgram() {
+    public boolean parsearPrograma() {
         int inicio = posicionActual;
         if (tokenActualEs(C_CLASS)) {
             posicionActual++;
@@ -146,7 +146,7 @@ public class Parser {
         return false;
     }
 
-    /** while ( ExpressionBooleana ) { ListaSentencias } */
+    /** while ( ExpresionBooleana ) { ListaSentencias } */
     public boolean parsearWhile() {
         int inicio = posicionActual;
         if (tokenActualEs(C_WHILE)) {
@@ -228,7 +228,7 @@ public class Parser {
         return false;
     }
 
-    /** Expresion → Expresion OP Expresion */
+    /** Expresion → Termino OP Termino */
     public boolean parsearExpresion() {
         int inicio=posicionActual;
         if (parsearTermino()) {
@@ -248,7 +248,7 @@ public class Parser {
         return false;
     }
 
-    /** Expresion → Identifier | NumEntero */
+    /** Expresion → Identificador | NumEntero */
     public boolean parsearTermino() { return tokenActualEs(C_IDENTIFICADOR) || tokenActualEs(C_NUMENTERO); }
 
     /** OP → + | - | * */
