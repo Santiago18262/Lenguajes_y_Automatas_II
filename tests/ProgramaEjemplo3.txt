@@ -1,0 +1,7 @@
+class Test { 
+    int x; 
+    int y; 
+    while (x + 5 < y * 2) {
+        x = x + 1; 
+    }
+}

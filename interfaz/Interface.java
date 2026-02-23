@@ -186,7 +186,7 @@ public class Interface extends JFrame {
             return;
         }
         Parser p = new Parser(ultimaLista);
-        boolean exito = p.analizar();
+        boolean exito = p.analizar(null); 
 
         if (exito) {
             areaErrores.setForeground(new Color(0, 128, 0));
@@ -215,8 +215,8 @@ public class Interface extends JFrame {
             return;
         }
         // Reutilizamos los mismos tokens que ya fueron codificados por Parser en ejecutarParser()
-        Semantico s = new Semantico(ultimaLista);
-        boolean ok = s.analizar(); // dentro de Semantico se puede mostrar UI adicional
+        Semantico sem = new Semantico(ultimaLista);
+        boolean ok = sem.analizar();
 
         if (ok) {
             areaErrores.setForeground(new Color(0, 128, 0));
@@ -228,7 +228,7 @@ public class Interface extends JFrame {
         } else {
             areaErrores.setForeground(Color.RED);
             areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
-            areaErrores.setText("SEMANTIC ERROR\n\n" + s.getErrores());
+            areaErrores.setText("SEMANTIC ERROR\n\n" + sem.getErrores());
             JOptionPane.showMessageDialog(this,
                     "Se encontraron errores semánticos.",
                     "Semántico", JOptionPane.ERROR_MESSAGE);

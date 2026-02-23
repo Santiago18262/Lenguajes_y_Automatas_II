@@ -70,23 +70,26 @@ public class Parser {
         }
     }
 
-    public boolean analizar() {
+    public boolean analizar(Semantico sem) {
         asignarCodigos();
-        boolean resultado = parsearPrograma();
-        return resultado;
+        this.posicionActual = 0;
+        this.mensajesError = new StringBuilder();
+        return parsearPrograma(sem);
     }
 
     /** Programa → class Identificador { ListaDeclaración ListaSentencias } EOF */
-    public boolean parsearPrograma() {
+    public boolean parsearPrograma(Semantico sem) {
         int inicio = posicionActual;
         if (tokenActualEs(C_CLASS)) {
             posicionActual++;
             if (tokenActualEs(C_IDENTIFICADOR)) {
+                String nombre = listaTokens.get(posicionActual).valor;
+                if (sem != null) sem.registrarNombreClase(nombre);
                 posicionActual++;
                 if (tokenActualEs(C_LLAVEABRE)) {
                     posicionActual++;
-                    if (parsearListaDeclaracion()) {
-                        if (parsearListaSentencias()) {
+                    if (parsearListaDeclaracion(sem)) {
+                        if (parsearListaSentencias(sem)) {
                             if (tokenActualEs(C_LLAVECIERRA)) {
                                 posicionActual++;
                                 if (esEOF()) return true;
@@ -101,19 +104,22 @@ public class Parser {
     }
 
     /** ListaDeclaracion → [[DeclaracionVar;]]* */
-    public boolean parsearListaDeclaracion() {
+    public boolean parsearListaDeclaracion(Semantico sem) {
         boolean encontrado = false;
-        while (parsearDeclaracionVar()) encontrado = true;
+        while (parsearDeclaracionVar(sem)) encontrado = true;
         if (!encontrado) return true;
         return true;
     }
 
     /** DeclaracionVar → TipoDato Identificador ; */
-    public boolean parsearDeclaracionVar() {
+    public boolean parsearDeclaracionVar(Semantico sem) {
         int inicio = posicionActual;
         if (parsearTipoDato()) {
+            String tipo = tokenActualEs(C_INT) ? "int" : "boolean";
             posicionActual++;
             if (tokenActualEs(C_IDENTIFICADOR)) {
+                String nombre = listaTokens.get(posicionActual).valor;
+                if (sem != null){ sem.declarar(nombre, tipo);} // ✅ semántico: redeclaración + tabla
                 posicionActual++;
                 if (tokenActualEs(C_PUNTOCOMA)) {
                     posicionActual++;
@@ -129,36 +135,36 @@ public class Parser {
     public boolean parsearTipoDato() { return tokenActualEs(C_INT) || tokenActualEs(C_BOOLEAN); }
 
     /** ListaSentencias → [[Sentencias]]* */
-    public boolean parsearListaSentencias() {
+    public boolean parsearListaSentencias(Semantico sem) {
         boolean encontrado = false;
-        while (parsearSentencias()) encontrado = true;
+        while (parsearSentencias(sem)) encontrado = true;
         if (!encontrado) return true;
         return true;
     }
 
     /** Sentencias → while (ExpresionBooleana){ListaSentencias} | Identificador=Expresion; | Identificador=ExpresionBooleana; */
-    public boolean parsearSentencias() {
+    public boolean parsearSentencias(Semantico sem) {
         int inicio = posicionActual;
-        if (tokenActualEs(C_WHILE)) { if (parsearWhile()) return true; }
+        if (tokenActualEs(C_WHILE)) { if (parsearWhile(sem)) return true; }
         posicionActual = inicio;
-        if (tokenActualEs(C_IDENTIFICADOR)) { if (parsearAsignacion() || parsearAsignacionBooleana()) return true; }
+        if (tokenActualEs(C_IDENTIFICADOR)) { if (parsearAsignacion(sem) || parsearAsignacionBooleana(sem)) return true; }
         posicionActual = inicio;
         return false;
     }
 
     /** while ( ExpresionBooleana ) { ListaSentencias } */
-    public boolean parsearWhile() {
+    public boolean parsearWhile(Semantico sem) {
         int inicio = posicionActual;
         if (tokenActualEs(C_WHILE)) {
             posicionActual++;
             if (tokenActualEs(C_PARENTABRE)) {
                 posicionActual++;
-                if (parsearExpresionBooleana()) {
+                if (parsearExpresionBooleana(sem)) {
                     if (tokenActualEs(C_PARENTCIERRA)) {
                         posicionActual++;
                         if (tokenActualEs(C_LLAVEABRE)) {
                             posicionActual++;
-                            if (parsearListaSentencias()) {
+                            if (parsearListaSentencias(sem)) {
                                 if (tokenActualEs(C_LLAVECIERRA)) {
                                     posicionActual++;
                                     return true;
@@ -174,14 +180,19 @@ public class Parser {
     }
     
     /** Identificador = Expresion ; */
-    public boolean parsearAsignacion() {
+    public boolean parsearAsignacion(Semantico sem) {
         int inicio = posicionActual;
         if (tokenActualEs(C_IDENTIFICADOR)) {
+            String nombreVar = listaTokens.get(posicionActual).valor;
+            if (sem != null) sem.usar(nombreVar);
             posicionActual++;
             if (tokenActualEs(C_ASIGNACION)) {
                 posicionActual++;
-                if (parsearExpresion()) {
+                int iniExpr = posicionActual;
+                if (parsearExpresion(sem)) {
+                    int finExpr = posicionActual;
                     if (tokenActualEs(C_PUNTOCOMA)) {
+                        if (sem != null) sem.asignacionArit(nombreVar, listaTokens.subList(iniExpr, finExpr));
                         posicionActual++;
                         return true;
                     }
@@ -193,14 +204,19 @@ public class Parser {
     }
 
     /** Identificador = ExpresionBooleana ; */
-    public boolean parsearAsignacionBooleana() {
+    public boolean parsearAsignacionBooleana(Semantico sem) {
         int inicio = posicionActual;
         if (tokenActualEs(C_IDENTIFICADOR)) {
+            String nombreVar = listaTokens.get(posicionActual).valor;
+            if (sem != null) sem.usar(nombreVar);
             posicionActual++;
             if (tokenActualEs(C_ASIGNACION)) {
                 posicionActual++;
-                if (parsearExpresionBooleana()) {
+                int iniExpr = posicionActual;
+                if (parsearExpresionBooleana(sem)) {
+                    int finExpr = posicionActual;
                     if (tokenActualEs(C_PUNTOCOMA)) {
+                        if (sem != null) sem.asignacionBool(nombreVar,listaTokens.subList(iniExpr, finExpr));
                         posicionActual++;
                         return true;
                     }
@@ -212,15 +228,24 @@ public class Parser {
     }
 
     /** ExpresionBooleana → Expresion CMP Expresion | true | false */
-    public boolean parsearExpresionBooleana() {
+    public boolean parsearExpresionBooleana(Semantico sem) {
         int inicio = posicionActual;
-        if (tokenActualEs(C_TRUE) || tokenActualEs(C_FALSE)) { posicionActual++; return true; }
-        if (parsearTermino()) {
-            posicionActual++;
+        if (tokenActualEs(C_TRUE) || tokenActualEs(C_FALSE)) { 
+            if (sem != null) {
+            // Mandamos solo el token true/false para validar
+            sem.validarCondicionWhile(listaTokens.subList(posicionActual, posicionActual + 1));
+            }   
+            posicionActual++; 
+            return true; 
+        }
+        if (parsearExpresion(sem)) {
             if (parsearComparador()) {
                 posicionActual++;
-                if (parsearTermino())
-                    posicionActual++;
+                if (parsearExpresion(sem))
+                    if (sem != null) {
+                    // Enviamos todos los tokens desde 'inicio' hasta 'posicionActual'
+                    sem.validarCondicionWhile(listaTokens.subList(inicio, posicionActual));
+                    }
                 	return true;
             }
         }
@@ -229,13 +254,13 @@ public class Parser {
     }
 
     /** Expresion → Termino OP Termino */
-    public boolean parsearExpresion() {
+    public boolean parsearExpresion(Semantico sem) {
         int inicio=posicionActual;
-        if (parsearTermino()) {
+        if (parsearTermino(sem)) {
             posicionActual++;
-            while (parsearOperador()) {
+            while (posicionActual < listaTokens.size() && parsearOperador()) {
                 posicionActual++;
-                if (parsearTermino()) {
+                if (parsearTermino(sem)) {
                     posicionActual++;
                 } else {
                     posicionActual=inicio;
@@ -249,7 +274,13 @@ public class Parser {
     }
 
     /** Expresion → Identificador | NumEntero */
-    public boolean parsearTermino() { return tokenActualEs(C_IDENTIFICADOR) || tokenActualEs(C_NUMENTERO); }
+    public boolean parsearTermino(Semantico sem) { 
+        if (tokenActualEs(C_IDENTIFICADOR)){
+            if (sem != null) sem.usar(listaTokens.get(posicionActual).valor); // Uso de variable dentro de semantico sirve para detectar variables no declaradas
+            return true;
+        }   
+        return tokenActualEs(C_NUMENTERO); 
+    }
 
     /** OP → + | - | * */
     public boolean parsearOperador() { return tokenActualEs(C_OPMAS) || tokenActualEs(C_OPMENOS) || tokenActualEs(C_OPMULTI); }
