@@ -41,12 +41,7 @@ public class Scanner {
 
                 Token.TokenTipo tipoReservada = obtenerTipoReservada(palabra);
                 if (tipoReservada != Token.TokenTipo.Invalido) {
-                    if (palabra.equals("EOF")) {
-                        listaTokens.add(new Token(Token.TokenTipo.EOF, palabra));
-                    }
-                    else{
-                        listaTokens.add(new Token(tipoReservada, palabra));
-                    }
+                    listaTokens.add(new Token(tipoReservada, palabra));
                 } else {
                     listaTokens.add(new Token(Token.TokenTipo.Identificador, palabra));
                 }

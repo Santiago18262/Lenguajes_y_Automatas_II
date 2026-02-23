@@ -149,7 +149,7 @@ public class Interface extends JFrame {
             tmp.add(tk);
 
             // Agregamos TODAS las filas
-            modeloTabla.addRow(new Object[]{ tk.tipo, tk.valor });
+            modeloTabla.addRow(new Object[]{ tk.tipo, tk.valor});
 
             if (tk.tipo == Token.TokenTipo.Invalido) {
                 errores++;
@@ -163,6 +163,17 @@ public class Interface extends JFrame {
         areaErrores.setVisible(true);
 
         ultimaLista = tmp;
+
+        /** Asignar Codigos a cada uno de los tokens 
+        Parser p = new Parser(tmp);
+        p.asignarCodigos();   // solo codifica, no parsea
+        
+        modeloTabla.setRowCount(0);
+        for (Token tk : ultimaLista) {
+            modeloTabla.addRow(new Object[]{ tk.tipo, tk.valor, tk.codigo });
+        }
+        */
+
         if (errores > 0) {
             areaErrores.setForeground(Color.RED);
             areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));

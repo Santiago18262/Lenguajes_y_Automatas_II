@@ -68,6 +68,7 @@ public class Parser {
             case "while": return C_WHILE;
             case "true": return C_TRUE;
             case "false": return C_FALSE;
+            case "EOF": return C_EOF;
             default: return 0;
         }
     }
