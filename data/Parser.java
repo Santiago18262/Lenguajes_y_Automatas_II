@@ -127,7 +127,7 @@ public class Parser {
             posicionActual++;
             if (tokenActualEs(C_IDENTIFICADOR)) {
                 String nombre = listaTokens.get(posicionActual).valor;
-                if (sem != null){ sem.declarar(nombre, tipo);} // ✅ semántico: redeclaración + tabla
+                if (sem != null){ sem.declarar(nombre, tipo);} // Semántico: redeclaración + tabla
                 posicionActual++;
                 if (tokenActualEs(C_PUNTOCOMA)) {
                     posicionActual++;

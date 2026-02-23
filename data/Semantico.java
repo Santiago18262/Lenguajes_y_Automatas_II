@@ -103,7 +103,10 @@ public class Semantico {
             return;
         }
 
-        if (!validarExprArit(exprTokens)) return;
+        if (!validarExprArit(exprTokens)) {
+            registrarError("La expresión asignada a '" + nombreVar + "' no es aritmética válida.");
+            return;
+        }
 
         setValor(nombreVar, exprAString(exprTokens));
     }
@@ -125,7 +128,10 @@ public class Semantico {
             return;
         }
 
-        if (!validarExprBool(exprTokens)) return;
+        if (!validarExprBool(exprTokens)) {
+            registrarError("La expresión asignada a '" + nombreVar + "' no es booleana válida.");
+            return;
+        }
 
         setValor(nombreVar, exprAString(exprTokens));
     }
@@ -136,16 +142,9 @@ public class Semantico {
 
     /** Expresión aritmética: Expresion OP Expresion */
     private boolean validarExprArit(List<Token> expr) {
-        if (expr == null || expr.isEmpty()) {
-            registrarError("Expresión aritmética vacía");
-            return false;
-        }
-
         boolean esperoTermino = true;
-
         for (Token t : expr) {
             if (esPuntoComa(t)) break;
-
             if (esperoTermino) {
                 String tipo = tipoDeTermino(t);
                 if (tipo == null || "boolean".equals(tipo)) {
@@ -154,14 +153,14 @@ public class Semantico {
                 }
                 esperoTermino = false;
             } else {
-                if (!esOperadorArit(t)) {
-                    registrarError("Operador aritmético inválido o faltante");
-                    return false;
-                }
-                esperoTermino = true;
+            // Debe de contener un operador + - *
+            if (!esOperadorArit(t)) {
+                registrarError("Operador inválido en expresión aritmética");
+                return false;
+            }
+            esperoTermino = true; // Despues del operador espero término
             }
         }
-
         if (esperoTermino) {
             registrarError("Expresión aritmética incompleta");
             return false;
@@ -172,15 +171,12 @@ public class Semantico {
 
     /** Expresión booleana: Expresion CMP Expresion | true | false */
     private boolean validarExprBool(List<Token> expr) {
-        if (expr == null || expr.isEmpty()) {
-            registrarError("Expresión booleana vacía");
-            return false;
-        }
-
+        // True or False
         if (expr.size() == 1 && (expr.get(0).codigo == Parser.C_TRUE || expr.get(0).codigo == Parser.C_FALSE)) {
             return true;
         }
 
+        // Se busca el comparador
         int iCmp = -1;
         for (int i = 0; i < expr.size(); i++) {
             if (esComparador(expr.get(i))) {
@@ -189,24 +185,28 @@ public class Semantico {
             }
         }
 
-        if (iCmp == -1 || iCmp == 0 || iCmp == expr.size() - 1) {
-            registrarError("Comparador inválido en expresión booleana");
+        // El comparador no puede ser el primer ni ultimo token
+        if (iCmp == -1) {
+            registrarError("Falta comparador (< o >) en expresión booleana");
             return false;
         }
 
-        Token izq = expr.get(iCmp - 1);
-        Token der = expr.get(iCmp + 1);
-
-        String tipoIzq = tipoDeTermino(izq);
-        String tipoDer = tipoDeTermino(der);
-
-        if ("boolean".equals(tipoIzq) && "boolean".equals(tipoDer)) {
-            registrarError("Error de tipos: Los operandos de una comparación relacional no pueden ser booleanos");
+        if (iCmp == 0 || iCmp == expr.size() - 1) {
+            registrarError("Comparación incompleta en expresión booleana");
             return false;
         }
 
-        if (tipoIzq == null || "boolean".equals(tipoIzq) || tipoDer == null || "boolean".equals(tipoDer)) {
-            registrarError("Error de tipos: No se pueden comparar " + tipoIzq + " y " + tipoDer + " (no son compatibles)");
+        List<Token> izquierda = expr.subList(0, iCmp);
+        List<Token> derecha = expr.subList(iCmp + 1, expr.size());
+
+        // Validar ambos lados como expresiones aritméticas (int)
+        if (!validarExprArit(izquierda)) {
+            registrarError("Error en comparación: el lado izquierdo no es una expresión aritmética válida (int).");
+            return false;
+        }
+
+        if (!validarExprArit(derecha)) {
+            registrarError("Error en comparación: el lado derecho no es una expresión aritmética válida (int).");
             return false;
         }
 
