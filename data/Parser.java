@@ -26,6 +26,7 @@ public class Parser {
     public static final int C_ASIGNACION = 17;
     public static final int C_IDENTIFICADOR = 18;
     public static final int C_NUMENTERO = 19;
+    public static final int C_EOF = 20;
 
     public Parser(List<Token> tokens) { this.listaTokens = tokens; }
 
@@ -53,6 +54,7 @@ public class Parser {
                 case CMPMAY: token.codigo = C_CMPMAY; break;
                 case CMPMEN: token.codigo = C_CMPMEN; break;
                 case Asignacion: token.codigo = C_ASIGNACION; break;
+                case EOF: token.codigo = C_EOF; break;
                 default: token.codigo = 0; break;
             }
         }
@@ -92,7 +94,12 @@ public class Parser {
                         if (parsearListaSentencias(sem)) {
                             if (tokenActualEs(C_LLAVECIERRA)) {
                                 posicionActual++;
-                                if (esEOF()) return true;
+                                if (tokenActualEs(C_EOF)) {
+                                    posicionActual++;
+                                    return true;
+                                } else {
+                                    mensajesError.append("Error sintáctico: se esperaba EOF al final del programa.");
+                                }
                             }
                         }
                     }
@@ -291,10 +298,6 @@ public class Parser {
     private boolean tokenActualEs(int codigoEsperado) {
         if (posicionActual < listaTokens.size()) return listaTokens.get(posicionActual).codigo == codigoEsperado;
         return false;
-    }
-
-    private boolean esEOF() {
-        return posicionActual >= listaTokens.size() || (posicionActual < listaTokens.size() && listaTokens.get(posicionActual).codigo == 0);
     }
 
     public String getErrores() { return mensajesError.toString(); }

@@ -11,7 +11,7 @@ public class Scanner {
 
     // Listado de palabras reservadas
     private static String[] PALABRAS_RESERVADAS = {
-        "class", "boolean", "int", "while", "true", "false"
+        "class", "boolean", "int", "while", "true", "false", "EOF"
     };
 
     public Scanner(String codigo) {
@@ -41,7 +41,12 @@ public class Scanner {
 
                 Token.TokenTipo tipoReservada = obtenerTipoReservada(palabra);
                 if (tipoReservada != Token.TokenTipo.Invalido) {
-                    listaTokens.add(new Token(tipoReservada, palabra));
+                    if (palabra.equals("EOF")) {
+                        listaTokens.add(new Token(Token.TokenTipo.EOF, palabra));
+                    }
+                    else{
+                        listaTokens.add(new Token(tipoReservada, palabra));
+                    }
                 } else {
                     listaTokens.add(new Token(Token.TokenTipo.Identificador, palabra));
                 }
@@ -74,9 +79,6 @@ public class Scanner {
             }
             posicion++;
         }
-
-        // EOF
-        listaTokens.add(new Token(Token.TokenTipo.EOF, ""));
     }
 
     // Si el lexema está en la lista, es PalabraReservada; sino Invalido
@@ -118,7 +120,7 @@ public class Scanner {
             }
             return t;
         }
-        return new Token(Token.TokenTipo.EOF, "");
+        return null;
     }
 
     public String getMensajeError() { return mensajeError; }

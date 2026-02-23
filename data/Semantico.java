@@ -4,45 +4,52 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Semantico {
-    private List<Token> listaTokens;
-    private StringBuilder mensajesError = new StringBuilder();
-    private String nombreClase; 
 
-    // Clase para los Símbolos de la tabla
+    private final List<Token> listaTokens;
+    private StringBuilder mensajesError = new StringBuilder();
+    private String nombreClase;
+
+    /** Tabla de símbolos */
     public static class Simbolo {
         public final String nombre;
         public final String tipo;
         public String valor;
         public final int direccion;
-        
+
         public Simbolo(String n, String t, String v, int d) {
-            this.nombre=n; this.tipo=t; this.valor=v; this.direccion=d;
+            this.nombre = n;
+            this.tipo = t;
+            this.valor = v;
+            this.direccion = d;
         }
-		public String getNombre() {
-			return nombre;
-		}
-		public String getTipo() {
-			return tipo;
-		}
+
+        public String getNombre() { return nombre; }
+        public String getTipo() { return tipo; }
     }
 
-    // Para la tabla de Símbolos
+    // Tabla de símbolos 
     private final List<Simbolo> tablaSimbolos = new ArrayList<>();
     private int nextDir = 0;
 
-    public Semantico(List<Token> tokens) { this.listaTokens = tokens; }
-    public List<Simbolo> getTablaSimbolos(){ return tablaSimbolos; }
-    public String getErrores(){ return mensajesError.toString(); }
+    public Semantico(List<Token> tokens) {
+        this.listaTokens = tokens;
+    }
 
+    public List<Simbolo> getTablaSimbolos() { return tablaSimbolos; }
+    public String getErrores() { return mensajesError.toString(); }
+
+    /** Ejecuta el análisis semántico reutilizando el Parser:
+     * El Parser valida sintaxis y, al reconocer reglas, invoca acciones semánticas aquí
+     * (declarar, usar, asignacionArit, asignacionBool, validarCondicionWhile, etc.).
+     */
     public boolean analizar() {
-        this.mensajesError = new StringBuilder(); // Limpiar errores previos
-        this.tablaSimbolos.clear();               // Limpiar tabla previa
-        
-        // Creamos un parser "fantasma" para que recorra la lógica
-        // y dispare los eventos semánticos (declarar, usar, etc.)
+        mensajesError = new StringBuilder();
+        tablaSimbolos.clear();
+        nextDir = 0;
+
         Parser p = new Parser(listaTokens);
-        p.analizar(this); // 'this' es este objeto semántico
-        
+        p.analizar(this);
+
         return mensajesError.length() == 0;
     }
 
@@ -50,7 +57,7 @@ public class Semantico {
         this.nombreClase = nombre;
     }
 
-     /** Registrar una declaración: int x; / boolean b; */
+    /** Registra una variable en la tabla de símbolos validando redeclaraciones */
     public void declarar(String nombre, String tipo) {
         if (nombre.equals(nombreClase)) {
             registrarError("El identificador '" + nombre + "' ya está usado como nombre de la clase.");
@@ -60,25 +67,30 @@ public class Semantico {
             registrarError("Redeclaración de variable: " + nombre);
             return;
         }
+
         tablaSimbolos.add(new Simbolo(nombre, tipo, "", nextDir));
         nextDir += sizeOf(tipo);
     }
 
-    /** Para la regla: while (Expresion Booleana) */
+    /** Valida que la condición del while sea una expresión booleana correcta. */
     public void validarCondicionWhile(List<Token> exprTokens) {
         if (!validarExprBool(exprTokens)) {
             registrarError("La condición del ciclo 'while' debe ser una expresión booleana válida.");
         }
     }
 
-    /** Registrar el uso de una variable (en términos o lado izquierdo). */
+    /** Verifica que una variable exista antes de usarse en una expresión o instrucción. */
     public void usar(String nombre) {
         if (!existeSimbolo(nombre)) {
             registrarError("Uso de variable no declarada: " + nombre);
         }
     }
-    
-    /** Validar asignación aritmética: id = Expresion;  (Expresion es int) */
+
+    /**
+     * Asignación aritmética: id = Expresion;
+     * - id debe ser int
+     * - la expresión debe ser aritmética (solo términos int y operadores aritméticos)
+     */
     public void asignacionArit(String nombreVar, List<Token> exprTokens) {
         Simbolo var = buscarSimbolo(nombreVar);
         if (var == null) {
@@ -86,22 +98,21 @@ public class Semantico {
             return;
         }
 
-        // La variable destino debe ser int
         if (!"int".equals(var.tipo)) {
             registrarError("Tipos incompatibles en asignación a '" + nombreVar + "': " + var.tipo + " := int");
             return;
         }
 
-        // Validar que la expresión sea aritmética válida (solo int)
-        if (!validarExprArit(exprTokens)) {
-            return; // el error ya se registró dentro
-        }
+        if (!validarExprArit(exprTokens)) return;
 
-        // Guardar texto de la expresión
         setValor(nombreVar, exprAString(exprTokens));
     }
 
-    /** Validar asignación booleana: id = ExpresionBooleana; (resultado boolean) */
+    /**
+     * Asignación booleana: id = ExpresionBooleana;
+     * - id debe ser boolean
+     * - la expresión debe evaluarse a boolean (true/false o comparación relacional)
+     */
     public void asignacionBool(String nombreVar, List<Token> exprTokens) {
         Simbolo var = buscarSimbolo(nombreVar);
         if (var == null) {
@@ -109,30 +120,21 @@ public class Semantico {
             return;
         }
 
-        // La variable destino debe ser boolean
         if (!"boolean".equals(var.tipo)) {
             registrarError("Tipos incompatibles en asignación a '" + nombreVar + "': " + var.tipo + " := boolean");
             return;
         }
 
-        // Validar que la expresión booleana sea válida
-        if (!validarExprBool(exprTokens)) {
-            return; // el error ya se registró dentro
-        }
+        if (!validarExprBool(exprTokens)) return;
 
         setValor(nombreVar, exprAString(exprTokens));
     }
 
-    // =========================================================
-    // 2) Validaciones internas de expresiones
-    // =========================================================
+    // ===========================
+    // Validación de expresiones 
+    // ===========================
 
-    /**
-     * Expresión aritmética válida para tu gramática:
-     *   Termino (OP Termino)*
-     * Donde Termino es:
-     *   Identificador (de tipo int) | NumEntero
-     */
+    /** Expresión aritmética: Expresion OP Expresion */
     private boolean validarExprArit(List<Token> expr) {
         if (expr == null || expr.isEmpty()) {
             registrarError("Expresión aritmética vacía");
@@ -142,19 +144,14 @@ public class Semantico {
         boolean esperoTermino = true;
 
         for (Token t : expr) {
-            if (esPuntoComa(t)) break; // por seguridad
+            if (esPuntoComa(t)) break;
 
             if (esperoTermino) {
                 String tipo = tipoDeTermino(t);
-                if (tipo == null) {
+                if (tipo == null || "boolean".equals(tipo)) {
                     registrarError("Término inválido en expresión aritmética");
                     return false;
                 }
-                if ("boolean".equals(tipo)) {
-                    registrarError("Término inválido en expresión aritmética");
-                    return false;
-                }
-                // si es identificador y no existe, ya se registró error en tipoDeTermino
                 esperoTermino = false;
             } else {
                 if (!esOperadorArit(t)) {
@@ -165,7 +162,7 @@ public class Semantico {
             }
         }
 
-        if (esperoTermino) { // terminó esperando término => expresión incompleta
+        if (esperoTermino) {
             registrarError("Expresión aritmética incompleta");
             return false;
         }
@@ -173,24 +170,17 @@ public class Semantico {
         return true;
     }
 
-    /**
-     * Expresión booleana válida para tu gramática:
-     *   true | false | Termino CMP Termino
-     * Donde Termino debe ser numérico (int).
-     */
+    /** Expresión booleana: Expresion CMP Expresion | true | false */
     private boolean validarExprBool(List<Token> expr) {
         if (expr == null || expr.isEmpty()) {
             registrarError("Expresión booleana vacía");
             return false;
         }
 
-        // Caso: true / false
         if (expr.size() == 1 && (expr.get(0).codigo == Parser.C_TRUE || expr.get(0).codigo == Parser.C_FALSE)) {
             return true;
         }
 
-        // En lugar de asumir que el comparador está en la posición 1, 
-        // lo buscamos en la lista, porque ahora puede venir "x + 5 < y"
         int iCmp = -1;
         for (int i = 0; i < expr.size(); i++) {
             if (esComparador(expr.get(i))) {
@@ -199,12 +189,11 @@ public class Semantico {
             }
         }
 
-        if (iCmp == -1) {
+        if (iCmp == -1 || iCmp == 0 || iCmp == expr.size() - 1) {
             registrarError("Comparador inválido en expresión booleana");
             return false;
         }
 
-        // Obtenemos los términos que están justo al lado del comparador
         Token izq = expr.get(iCmp - 1);
         Token der = expr.get(iCmp + 1);
 
@@ -217,19 +206,14 @@ public class Semantico {
         }
 
         if (tipoIzq == null || "boolean".equals(tipoIzq) || tipoDer == null || "boolean".equals(tipoDer)) {
-            registrarError("Error de tipos: No se pueden comparar tipos no numéricos");
+            registrarError("Error de tipos: No se pueden comparar " + tipoIzq + " y " + tipoDer + " (no son compatibles)");
             return false;
         }
 
-        // Si tu Parser garantiza la gramática exacta, con esto basta.
-        // Si pudiera venir algo como: a < b + 1, entonces aquí habría que extenderlo.
         return true;
     }
 
-    // =========================================================
-    // 3) Helpers de tabla de símbolos
-    // =========================================================
-
+    // Operaciones sobre la tabla de símbolos
     private boolean existeSimbolo(String nombre) {
         for (Simbolo s : tablaSimbolos) {
             if (s.nombre.equals(nombre)) return true;
@@ -253,15 +237,12 @@ public class Semantico {
         }
     }
 
-    // =========================================================
-    // 4) Helpers de tipos / tokens
-    // =========================================================
-
+    /** Utilidades para validación de expresiones 
+     * Devuelve el tipo semántico de un token usado como término (o null si no aplica). */
     private String tipoDeTermino(Token t) {
         if (t == null) return null;
 
         if (t.codigo == Parser.C_NUMENTERO) return "int";
-
         if (t.codigo == Parser.C_TRUE || t.codigo == Parser.C_FALSE) return "boolean";
 
         if (t.codigo == Parser.C_IDENTIFICADOR) {
@@ -290,6 +271,7 @@ public class Semantico {
         return t != null && t.codigo == Parser.C_PUNTOCOMA;
     }
 
+    /** Tamaño “simulado” por tipo para calcular direcciones. */
     private int sizeOf(String tipo) {
         switch (tipo) {
             case "int": return 2;
@@ -298,6 +280,7 @@ public class Semantico {
         }
     }
 
+    /** Convierte una lista de tokens a texto, para guardar la expresión asignada. */
     private String exprAString(List<Token> expr) {
         StringBuilder sb = new StringBuilder();
         for (Token t : expr) {
@@ -308,6 +291,7 @@ public class Semantico {
         return sb.toString().trim();
     }
 
+    /** Agrega un error al mensaje de errorres */
     private void registrarError(String msg) {
         if (msg == null || msg.isEmpty()) return;
 

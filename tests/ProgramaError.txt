@@ -4,3 +4,4 @@ class ErrorCuatro {
     while (10 > i) 
         i = i + 1;
 }
+EOF

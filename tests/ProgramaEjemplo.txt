@@ -5,3 +5,4 @@ class test {
 	x = x - 1;  
     }  
 } 
+EOF

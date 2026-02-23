@@ -108,7 +108,9 @@ public class Interface extends JFrame {
 
         panelErrores.add(barraErrores, BorderLayout.NORTH);
 
+        // Área de errores
         areaErrores.setEditable(false);
+        areaErrores.setVisible(false);
         areaErrores.setFont(new Font("Consolas", Font.PLAIN, 22));
         panelErrores.add(new JScrollPane(areaErrores), BorderLayout.CENTER);
 
@@ -143,17 +145,22 @@ public class Interface extends JFrame {
 
         while (true) {
             Token tk = analizador.siguienteToken();
+            if (tk == null) break;
             tmp.add(tk);
 
-            // Agregamos TODAS las filas, incluyendo EOF (se pintará gris en el renderer)
+            // Agregamos TODAS las filas
             modeloTabla.addRow(new Object[]{ tk.tipo, tk.valor });
 
             if (tk.tipo == Token.TokenTipo.Invalido) {
                 errores++;
                 sb.append("Error léxico: token inválido -> ").append(tk.valor).append('\n');
             }
-            if (tk.tipo == Token.TokenTipo.EOF) break;
         }
+
+        // Deshabilitar botones de Parser y Semántico hasta que el léxico esté correcto
+        btnParser.setEnabled(false);
+        btnSemantico.setEnabled(false);
+        areaErrores.setVisible(true);
 
         ultimaLista = tmp;
         if (errores > 0) {
@@ -187,6 +194,9 @@ public class Interface extends JFrame {
         }
         Parser p = new Parser(ultimaLista);
         boolean exito = p.analizar(null); 
+
+        btnSemantico.setEnabled(false); // Deshabilitar Semántico hasta que Parser este correcto
+        areaErrores.setVisible(true);
 
         if (exito) {
             areaErrores.setForeground(new Color(0, 128, 0));
@@ -239,7 +249,6 @@ public class Interface extends JFrame {
         private static final long serialVersionUID = 1L;
         private static final Color VERDE_CLARO = new Color(214, 245, 214);
         private static final Color ROJO_CLARO  = new Color(248, 215, 218);
-        private static final Color GRIS_CLARO  = new Color(230, 230, 230);
 
         @Override
         public Component getTableCellRendererComponent(
@@ -255,8 +264,12 @@ public class Interface extends JFrame {
                     && ((Token.TokenTipo) tipo) == Token.TokenTipo.EOF;
 
             if (!isSelected) {
-                if (esEOF) c.setBackground(GRIS_CLARO);
-                else c.setBackground(esInvalido ? ROJO_CLARO : VERDE_CLARO);
+                if (esInvalido){
+                    c.setBackground(ROJO_CLARO);
+                }
+                else{
+                    c.setBackground(VERDE_CLARO);
+                }
                 c.setForeground(Color.BLACK);
             }
             return c;
