@@ -1,0 +1,9 @@
+class test {   
+    int x;
+    boolean x;
+    x = 56 + b;
+    while (x > 0){ 
+	x = x - 1;  
+    }  
+} 
+EOF

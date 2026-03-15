@@ -8,10 +8,11 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import data.Scanner;
-import data.Semantico;
 import data.Parser;
 import data.Token;
+import data.Scanner;
+import data.Semantico;
+import data.Intermedio;
 
 public class Interface extends JFrame {
 
@@ -20,6 +21,8 @@ public class Interface extends JFrame {
     // Áreas
     private JTextArea areaCodigo = new JTextArea();
     private JTextArea areaErrores = new JTextArea();
+    private JTextArea areaCI = new JTextArea();
+    private JTextArea areaCO = new JTextArea();
 
     // Tabla de símbolos
     private DefaultTableModel modeloTabla = new DefaultTableModel(
@@ -33,9 +36,12 @@ public class Interface extends JFrame {
     private JButton btnTokens;
     private JButton btnParser;
     private JButton btnSemantico;
+    private JButton btnCodigoIntermedio;
+    private JButton btnCodigoObjeto;
 
     // Ultima lista de tokens
     private List<Token> ultimaLista;     // tokens del último análisis léxico
+    private List<Semantico.Simbolo> ultimaTablaSimbolos = null; // <-- NUEVO: tabla de símbolos del semántico OK
 
     public Interface() {
         super("MicroJavaCompiler");
@@ -118,8 +124,50 @@ public class Interface extends JFrame {
         filaSuperior.add(panelTokens);
         filaSuperior.add(panelErrores);
 
-        JPanel filaInferior = new JPanel(new GridLayout(1, 3, 10, 10));
+        JPanel filaInferior = new JPanel(new GridLayout(1, 2, 10, 10));
 
+        // Panel CI con botón "código intermedio" ARRIBA
+        JPanel panelCI = new JPanel(new BorderLayout());
+        panelCI.setBorder(new TitledBorder("CI"));
+        ((TitledBorder)panelCI.getBorder()).setTitleFont(new Font("SansSerif", Font.BOLD, 22));
+        areaCI.setEditable(false);
+        areaCI.setFont(new Font("Consolas", Font.PLAIN, 22));
+
+        // Botón arriba del área de CI
+        JPanel barraCI = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
+        btnCodigoIntermedio = new JButton("Código intermedio");
+        btnCodigoIntermedio.setFont(new Font("SansSerif", Font.BOLD, 22));
+        btnCodigoIntermedio.setEnabled(false); // se habilita solo tras semántico OK
+        btnCodigoIntermedio.addActionListener(e -> generarCodigoIntermedio());
+        barraCI.add(btnCodigoIntermedio);
+        panelCI.add(barraCI, BorderLayout.NORTH);
+
+        panelCI.add(new JScrollPane(areaCI), BorderLayout.CENTER);
+
+        JPanel panelRelleno = new JPanel();
+        panelRelleno.setOpaque(false);
+
+        // Panel CO
+        // JPanel panelCO = new JPanel(new BorderLayout());
+        // panelCO.setBorder(new TitledBorder("CO"));
+        // ((TitledBorder)panelCO.getBorder()).setTitleFont(new Font("SansSerif", Font.BOLD, 22));
+        // areaCO.setEditable(false);
+        // areaCO.setFont(new Font("Consolas", Font.PLAIN, 22));
+        // panelCO.add(new JScrollPane(areaCO), BorderLayout.CENTER);
+        
+        // // Botón arriba del área de CO
+        // JPanel barraCO = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
+        // btnCodigoObjeto = new JButton("Código Objeto");
+        // btnCodigoObjeto.setFont(new Font("SansSerif", Font.BOLD, 22));
+        // btnCodigoObjeto.setEnabled(false); // se habilita solo tras semántico OK
+        // btnCodigoObjeto.addActionListener(e -> generarCodigoObjeto());
+        // barraCO.add(btnCodigoObjeto);
+        // panelCO.add(barraCO, BorderLayout.NORTH);
+
+        filaInferior.add(panelCI);
+        // filaInferior.add(panelCO);
+        filaInferior.add(panelRelleno);
+        
         JPanel centro = new JPanel(new GridLayout(2, 1, 10, 10));
         centro.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
         centro.add(filaSuperior);
@@ -243,6 +291,9 @@ public class Interface extends JFrame {
             areaErrores.setForeground(new Color(0, 128, 0));
             areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
             areaErrores.setText("Análisis semántico correcto.\n");
+            // Guardamos la tabla de símbolos para el generador intermedio
+            ultimaTablaSimbolos = sem.getTablaSimbolos();
+            if (btnCodigoIntermedio != null) btnCodigoIntermedio.setEnabled(true); // habilitar CI solo aquí
             JOptionPane.showMessageDialog(this,
                     "El análisis semántico se completó sin errores.",
                     "Semántico", JOptionPane.INFORMATION_MESSAGE);
@@ -250,10 +301,41 @@ public class Interface extends JFrame {
             areaErrores.setForeground(Color.RED);
             areaErrores.setFont(new Font("Consolas", Font.BOLD, 22));
             areaErrores.setText("SEMANTIC ERROR\n\n" + sem.getErrores());
+            ultimaTablaSimbolos = null; // no usar tabla si semántico falló
+            if (btnCodigoIntermedio != null) btnCodigoIntermedio.setEnabled(false);
             JOptionPane.showMessageDialog(this,
                     "Se encontraron errores semánticos.",
                     "Semántico", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /** Genera y muestra el código intermedio (Intel) en el área CI cuando se presiona el botón. */
+    private void generarCodigoIntermedio() {
+        if (ultimaLista == null) {
+            JOptionPane.showMessageDialog(this,
+                    "No hay tokens disponibles. Ejecuta Tokens/Parser/Semántico primero.",
+                    "Información", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (ultimaTablaSimbolos == null) {
+            JOptionPane.showMessageDialog(this,
+                    "No hay tabla de símbolos válida. Ejecuta el análisis semántico sin errores.",
+                    "Información", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Crear y ejecutar el generador en formato Intel
+        Intermedio inter = new Intermedio(ultimaLista, ultimaTablaSimbolos, areaCI);
+        inter.imprimirTodo();
+        
+        if ( areaCI != null) {
+        	btnCodigoObjeto.setEnabled(true);
+
+        }  
+            JOptionPane.showMessageDialog(this,
+                    "Código intermedio generado.",
+                    "CI", JOptionPane.INFORMATION_MESSAGE);
+        
     }
 
     private static class ValidaRenderer extends DefaultTableCellRenderer {
