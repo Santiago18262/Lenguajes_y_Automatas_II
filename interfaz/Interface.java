@@ -208,6 +208,7 @@ public class Interface extends JFrame {
         // Deshabilitar botones de Parser y Semántico hasta que el léxico esté correcto
         btnParser.setEnabled(false);
         btnSemantico.setEnabled(false);
+        btnCodigoIntermedio.setEnabled(false);
         areaErrores.setVisible(true);
 
         ultimaLista = tmp;
@@ -324,13 +325,14 @@ public class Interface extends JFrame {
             return;
         }
 
+        areaCI.setText(""); // Limpiar el area del código intermedio al volver a generar
+
         // Crear y ejecutar el generador en formato Intel
         Intermedio inter = new Intermedio(ultimaLista, ultimaTablaSimbolos, areaCI);
         inter.imprimirTodo();
         
         if ( areaCI != null) {
         	btnCodigoObjeto.setEnabled(true);
-
         }  
             JOptionPane.showMessageDialog(this,
                     "Código intermedio generado.",
