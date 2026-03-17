@@ -1,5 +1,6 @@
 package data;
 
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JTextArea;
 import data.Semantico.Simbolo;
@@ -18,6 +19,7 @@ public class Intermedio {
         this.out = out;
     }
 
+    // Imprime una línea de código en formato tipo ensamblador
     private void col(String etiqueta, String instruccion, String operandos) {
         String fila = String.format("%-10s %-8s %s\n", 
                                     (etiqueta != null ? etiqueta : ""), 
@@ -26,6 +28,7 @@ public class Intermedio {
         out.append(fila);
     }
 
+    // Crea una variable temporal para guardar resultados intermedios de operaciones
     private String nuevaTemporal() {
         String nombre = "T" + contadorTemporales++;
         tablaSemantica.add(new Simbolo(nombre, "int", "?", 0)); 
@@ -39,6 +42,7 @@ public class Intermedio {
         capturarNombreClase();
         leerProgram(); 
         
+        // Se reinicia el análisis para generar ahora el código final
         this.out = finalOut; 
         this.contadorTemporales = 0;
         this.posicionActual = 0; 
@@ -50,20 +54,27 @@ public class Intermedio {
         imprimirEND();
     }
     
+    // Encabezado del programa ensamblador
     public void imprimirHeader() {
         col("TITLE", nombreClase, "");
         col(null, ".MODEL", "SMALL");
         col(null, ".STACK", "100h");
     }
 
+    // Sección de variables del programa
     public void imprimirData() {
         out.append(".DATA\n");
+
+        // Recorre todos los símbolos detectados por el análisis semántico
         for (Simbolo s : tablaSemantica) {
+
+            // Boolean se guarda como byte, int como word
             String directiva = s.getTipo().equals("boolean") ? "DB" : "DW";
             col(s.getNombre(), directiva, "?");
         }
     }
     
+    // Inicio del código ejecutable
     public void imprimirCODE() {
         out.append("\n.CODE\n");
         col("MAIN", "PROC", "FAR");
@@ -72,6 +83,7 @@ public class Intermedio {
         out.append("\n");
     }
     
+    // Finalización del programa
     public void imprimirEND() {
         out.append("\n");
         col(null, "MOV", "AX, 4C00h");
@@ -80,6 +92,7 @@ public class Intermedio {
         col(null, "END", "MAIN");
     }
 
+    // Lee la estructura general del programa: class { ListaDeclaraciones Sentencias } EOF
     public boolean leerProgram() {
         if (tokenActualEs(Parser.C_CLASS)) {
             posicionActual += 2; 
@@ -96,6 +109,7 @@ public class Intermedio {
         return false;
     }
 
+    // Procesa declaraciones de variables
     private void leerListaDeclaracion() {
         while (tokenActualEs(Parser.C_INT) || tokenActualEs(Parser.C_BOOLEAN)) {
             posicionActual += 2;
@@ -103,28 +117,38 @@ public class Intermedio {
         }
     }
 
+    // Procesa múltiples sentencias hasta que ya no encuentre más
     private void leerListaSentencias() {
         while (leerSentencias()) { }
     }
 
+    // Detecta qué tipo de sentencia se está leyendo (while o asignación)
     private boolean leerSentencias() {
         int inicio = posicionActual;
 
+        // --- SENTENCIA WHILE ---
         if (tokenActualEs(Parser.C_WHILE)) {
+
+            // Se avanza hasta el inicio de la condición
             posicionActual += 2; 
+
             int condIni = posicionActual;
+
+            // Se salta la expresión booleana para ubicar su final
             saltarExpresionBooleana();
             int condFin = posicionActual;
             
             if (tokenActualEs(Parser.C_PARENTCIERRA)) {
                 posicionActual++;
+
+                // Etiquetas para controlar el ciclo
                 String etqIni = "W_INI" + inicio;
                 String etqFin = "W_FIN" + inicio;
                 
+                // Etiqueta inicio del ciclo
                 col(etqIni + ":", null, null);
                 
-                // --- CORRECCIÓN AQUÍ ---
-                // Resolvemos la comparación compleja
+                // Genera la comparación de la condición
                 imprimirComparacionCompleja(listaTokens.subList(condIni, condFin), etqFin);
                 
                 if (tokenActualEs(Parser.C_LLAVEABRE)) {
@@ -132,7 +156,11 @@ public class Intermedio {
                     leerListaSentencias();
                     if (tokenActualEs(Parser.C_LLAVECIERRA)) {
                         posicionActual++;
+
+                        // Salto al inicio del ciclo
                         col(null, "JMP", etqIni);
+
+                        // Etiqueta de salida del ciclo
                         col(etqFin + ":", null, null);
                         return true;
                     }
@@ -140,50 +168,107 @@ public class Intermedio {
             }
         }
 
+        // --- SENTENCIA DE ASIGNACIÓN ---
         posicionActual = inicio;
         if (tokenActualEs(Parser.C_IDENTIFICADOR)) {
+
+            // Variable destino
             String varDestino = listaTokens.get(posicionActual).valor;
+
             posicionActual += 2; 
+
             int exprIni = posicionActual;
+
+            // Se salta la expresión aritmética
             saltarExpresion(); 
+
             int exprFin = posicionActual;
             
             if (tokenActualEs(Parser.C_PUNTOCOMA)) {
                 posicionActual++;
+
+                // Genera el código aritmético y deja el resultado en AX
                 generarCodigoAritmetico(exprIni, exprFin, "AX");
+
+                // Guarda el resultado en la variable destino
                 col(null, "MOV", varDestino + ", AX");
+
                 return true;
             }
         }
         return false;
     }
 
-    // Procesa aritmética y deja el resultado en el registro indicado (normalmente AX)
+    // Genera código para expresiones aritméticas respetando prioridad de operadores
     private void generarCodigoAritmetico(int ini, int fin, String registroDestino) {
-        col(null, "MOV", registroDestino + ", " + listaTokens.get(ini).valor);
-        
-        int i = ini + 1;
-        while (i < fin) {
-            int op = listaTokens.get(i).codigo;
-            String val = listaTokens.get(i + 1).valor;
-            
-            if (op == Parser.C_OPMAS)         col(null, "ADD", registroDestino + ", " + val);
-            else if (op == Parser.C_OPMENOS)  col(null, "SUB", registroDestino + ", " + val);
-            else if (op == Parser.C_OPMULTI) {
+
+        // Se copia la sublista de tokens de la expresión para manipularla
+        List<Token> tokensExp = new ArrayList<>(listaTokens.subList(ini, fin));
+
+        // --- PRIMERA PASADA: MULTIPLICACIONES ---
+        // Se resuelven primero porque tienen mayor prioridad
+        for (int i = 0; i < tokensExp.size(); i++) {                        
+            if (tokensExp.get(i).codigo == Parser.C_OPMULTI) {                 
+
+                // Operandos de la multiplicación
+                String izq = tokensExp.get(i - 1).valor;
+                String der = tokensExp.get(i + 1).valor;
+
+                // Se crea un temporal para guardar el resultado
                 String tmp = nuevaTemporal();
-                col(null, "MOV", tmp + ", " + val);
-                col(null, "MUL", tmp); 
+
+                // Se genera el código ensamblador
+                col(null, "MOV", "AX, " + izq);
+                col(null, "MOV", "DX, " + der);
+                col(null, "MUL", "DX");
+                col(null, "MOV", tmp + ", AX");
+ 
+                // Se reduce la expresión reemplazando "a * b" por el temporal
+                tokensExp.remove(i + 1);
+                tokensExp.remove(i);
+                
+                Token tokenTmp = new Token(Token.TokenTipo.Identificador, tmp);
+                tokenTmp.codigo = Parser.C_IDENTIFICADOR;
+
+                tokensExp.set(i - 1, tokenTmp);
+
+                // Se retrocede el índice para continuar evaluando correctamente
+                i--;
             }
-            i += 2;
+        }
+    
+        // --- SEGUNDA PASADA: SUMAS Y RESTAS ---
+        if (tokensExp.size() > 0) {
+
+            // Cargar el primer valor en AX
+            col(null, "MOV", "AX, " + tokensExp.get(0).valor);
+
+            for (int i = 1; i < tokensExp.size(); i += 2) {
+
+                int op = tokensExp.get(i).codigo;
+                String val = tokensExp.get(i + 1).valor;
+
+                // Generar instrucción según operador
+                if (op == Parser.C_OPMAS) {
+                    col(null, "ADD", "AX, " + val);
+                } else if (op == Parser.C_OPMENOS) {
+                    col(null, "SUB", "AX, " + val);
+                }
+            }
+            
+            // Si el resultado debe guardarse en otro registro
+            if (!registroDestino.equals("AX")) {
+                col(null, "MOV", registroDestino + ", AX");
+            }
         }
     }
 
-    /**
-     * CORRECCIÓN DE COMPARACIÓN COMPLEJA:
-     * Divide la lista en [Expresion Izquierda] [CMP] [Expresion Derecha]
-     */
+    // Genera la comparación para condiciones del while
     private void imprimirComparacionCompleja(List<Token> tokens, String etiquetaFalsa) {
+
         int iCmp = -1;
+
+        // Busca el operador de comparación dentro de la lista
         for (int i = 0; i < tokens.size(); i++) {
             int cod = tokens.get(i).codigo;
             if (cod == Parser.C_CMPMAY || cod == Parser.C_CMPMEN) {
@@ -192,40 +277,47 @@ public class Intermedio {
         }
 
         if (iCmp != -1) {
-            // 1. Resolver lado izquierdo y guardar en un temporal
+
+            // Temporal para guardar el resultado de la expresión izquierda
             String tempIzq = nuevaTemporal();
+
             generarCodigoAritmetico(listaTokens.indexOf(tokens.get(0)), listaTokens.indexOf(tokens.get(iCmp)), "AX");
             col(null, "MOV", tempIzq + ", AX");
 
-            // 2. Resolver lado derecho y dejar en AX
+            // Se evalúa la expresión derecha
             generarCodigoAritmetico(listaTokens.indexOf(tokens.get(iCmp + 1)), listaTokens.indexOf(tokens.get(tokens.size()-1)) + 1, "AX");
 
-            // 3. Comparar Temporal (Izq) con AX (Der)
+            // Comparación entre ambos resultados
             col(null, "CMP", tempIzq + ", AX");
             
+            // Dependiendo del operador se genera el salto correspondiente
             String salto = (tokens.get(iCmp).codigo == Parser.C_CMPMAY) ? "JLE" : "JGE";
             col(null, salto, etiquetaFalsa);
         }
     }
 
+    // Avanza hasta encontrar punto y coma
     private void saltarExpresion() {
         while (posicionActual < listaTokens.size() && listaTokens.get(posicionActual).codigo != Parser.C_PUNTOCOMA) {
             posicionActual++;
         }
     }
 
+    // Avanza hasta cerrar el paréntesis de la condición
     private void saltarExpresionBooleana() {
         while (posicionActual < listaTokens.size() && listaTokens.get(posicionActual).codigo != Parser.C_PARENTCIERRA) {
             posicionActual++;
         }
     }
 
+    // Guarda el nombre de la clase para el TITLE del programa
     private void capturarNombreClase() {
         if (listaTokens.size() > 1 && listaTokens.get(0).codigo == Parser.C_CLASS) {
             nombreClase = listaTokens.get(1).valor;
         }
     }
 
+    // Verifica si el token actual coincide con el código esperado
     private boolean tokenActualEs(int codigo) {
         return posicionActual < listaTokens.size() && listaTokens.get(posicionActual).codigo == codigo;
     }
