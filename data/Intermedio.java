@@ -21,7 +21,7 @@ public class Intermedio {
 
     // Imprime una línea de código en formato tipo ensamblador
     private void col(String etiqueta, String instruccion, String operandos) {
-        String fila = String.format("%-10s %-8s %s\n", 
+        String fila = String.format("%-16s %-14s %s\n", 
                                     (etiqueta != null ? etiqueta : ""), 
                                     (instruccion != null ? instruccion : ""), 
                                     (operandos != null ? operandos : ""));
@@ -56,14 +56,15 @@ public class Intermedio {
     
     // Encabezado del programa ensamblador
     public void imprimirHeader() {
-        col("TITLE", nombreClase, "");
+        col(null, "TITLE", nombreClase);
         col(null, ".MODEL", "SMALL");
         col(null, ".STACK", "100h");
     }
 
     // Sección de variables del programa
     public void imprimirData() {
-        out.append(".DATA\n");
+        out.append("\n");
+        col(null, ".DATA", null);
 
         // Recorre todos los símbolos detectados por el análisis semántico
         for (Simbolo s : tablaSemantica) {
@@ -76,7 +77,9 @@ public class Intermedio {
     
     // Inicio del código ejecutable
     public void imprimirCODE() {
-        out.append("\n.CODE\n");
+        out.append("\n");
+        col(null, ".CODE", null);
+
         col("MAIN", "PROC", "FAR");
         col(null, "MOV", "AX, @data");
         col(null, "MOV", "DS, AX");
@@ -85,10 +88,9 @@ public class Intermedio {
     
     // Finalización del programa
     public void imprimirEND() {
-        out.append("\n");
         col(null, "MOV", "AX, 4C00h");
         col(null, "INT", "21h");
-        col("MAIN", "ENDP", "");
+        col(null, "MAIN", "ENDP");
         col(null, "END", "MAIN");
     }
 
@@ -288,7 +290,8 @@ public class Intermedio {
             generarCodigoAritmetico(listaTokens.indexOf(tokens.get(iCmp + 1)), listaTokens.indexOf(tokens.get(tokens.size()-1)) + 1, "AX");
 
             // Comparación entre ambos resultados
-            col(null, "CMP", tempIzq + ", AX");
+            col(null, "MOV", "DX, " + tempIzq);  // cargar temporal en DX
+            col(null, "CMP", "DX, AX");  // comparar registro vs registro
             
             // Dependiendo del operador se genera el salto correspondiente
             String salto = (tokens.get(iCmp).codigo == Parser.C_CMPMAY) ? "JLE" : "JGE";
@@ -302,6 +305,7 @@ public class Intermedio {
             posicionActual++;
         }
     }
+    
 
     // Avanza hasta cerrar el paréntesis de la condición
     private void saltarExpresionBooleana() {

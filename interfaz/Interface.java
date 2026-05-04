@@ -13,6 +13,7 @@ import data.Token;
 import data.Scanner;
 import data.Semantico;
 import data.Intermedio;
+import data.Objeto;
 
 public class Interface extends JFrame {
 
@@ -131,6 +132,7 @@ public class Interface extends JFrame {
         panelCI.setBorder(new TitledBorder("CI"));
         ((TitledBorder)panelCI.getBorder()).setTitleFont(new Font("SansSerif", Font.BOLD, 22));
         areaCI.setEditable(false);
+        areaCI.setVisible(false);
         areaCI.setFont(new Font("Consolas", Font.PLAIN, 22));
 
         // Botón arriba del área de CI
@@ -144,29 +146,26 @@ public class Interface extends JFrame {
 
         panelCI.add(new JScrollPane(areaCI), BorderLayout.CENTER);
 
-        JPanel panelRelleno = new JPanel();
-        panelRelleno.setOpaque(false);
-
         // Panel CO
-        // JPanel panelCO = new JPanel(new BorderLayout());
-        // panelCO.setBorder(new TitledBorder("CO"));
-        // ((TitledBorder)panelCO.getBorder()).setTitleFont(new Font("SansSerif", Font.BOLD, 22));
-        // areaCO.setEditable(false);
-        // areaCO.setFont(new Font("Consolas", Font.PLAIN, 22));
-        // panelCO.add(new JScrollPane(areaCO), BorderLayout.CENTER);
+        JPanel panelCO = new JPanel(new BorderLayout());
+        panelCO.setBorder(new TitledBorder("CO"));
+        ((TitledBorder)panelCO.getBorder()).setTitleFont(new Font("SansSerif", Font.BOLD, 22));
+        areaCO.setEditable(false);
+        areaCO.setVisible(false);
+        areaCO.setFont(new Font("Consolas", Font.PLAIN, 22));
+        panelCO.add(new JScrollPane(areaCO), BorderLayout.CENTER);
         
-        // // Botón arriba del área de CO
-        // JPanel barraCO = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        // btnCodigoObjeto = new JButton("Código Objeto");
-        // btnCodigoObjeto.setFont(new Font("SansSerif", Font.BOLD, 22));
-        // btnCodigoObjeto.setEnabled(false); // se habilita solo tras semántico OK
-        // btnCodigoObjeto.addActionListener(e -> generarCodigoObjeto());
-        // barraCO.add(btnCodigoObjeto);
-        // panelCO.add(barraCO, BorderLayout.NORTH);
+        // Botón arriba del área de CO
+        JPanel barraCO = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
+        btnCodigoObjeto = new JButton("Código Objeto");
+        btnCodigoObjeto.setFont(new Font("SansSerif", Font.BOLD, 22));
+        btnCodigoObjeto.setEnabled(false); // se habilita solo tras semántico OK
+        btnCodigoObjeto.addActionListener(e -> generarCodigoObjeto());
+        barraCO.add(btnCodigoObjeto);
+        panelCO.add(barraCO, BorderLayout.NORTH);
 
         filaInferior.add(panelCI);
-        // filaInferior.add(panelCO);
-        filaInferior.add(panelRelleno);
+        filaInferior.add(panelCO);
         
         JPanel centro = new JPanel(new GridLayout(2, 1, 10, 10));
         centro.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
@@ -338,6 +337,27 @@ public class Interface extends JFrame {
                     "Código intermedio generado.",
                     "CI", JOptionPane.INFORMATION_MESSAGE);
         
+    }
+
+    private void generarCodigoObjeto(){
+        // Se valida que exista un CI
+        if (areaCI.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "No hay código intermedio. Genera primero el CI.",
+                "Información", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        areaCO.setText(""); // Limpiar el area del código objeto al volver a generar
+        areaCO.setVisible(true); // Asegurarse de que el área de código objeto sea visible
+
+        // Ahora le pasas el areaCI y areaCO
+        Objeto obj = new Objeto(ultimaTablaSimbolos, areaCI, areaCO);
+        obj.imprimirTodo();
+
+        JOptionPane.showMessageDialog(this,
+            "Código objeto generado.",
+            "CO", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private static class ValidaRenderer extends DefaultTableCellRenderer {
