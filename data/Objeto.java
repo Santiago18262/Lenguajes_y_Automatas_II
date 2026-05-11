@@ -54,9 +54,11 @@ public class Objeto {
     private static class SaltoPendiente {
         String etiqueta;
         int indiceInstr;
+        int offsetNext;
         SaltoPendiente(String etiqueta, int indiceInstr, int offsetNext) {
             this.etiqueta = etiqueta;
             this.indiceInstr = indiceInstr;
+            this.offsetNext = offsetNext;
         }
     }
 
@@ -94,17 +96,18 @@ public class Objeto {
             out.append("\n");
         }
         out.append("\n");
-        // generarSegmentoCode();
-        // for (InstruccionBin ib : instrucciones) {
-        //     out.append(ib.toString());
-        //     out.append("\n");
-        // }
-        // out.append("\n");
+        generarSegmentoCode();
+        for (InstruccionBin ib : instrucciones) {
+            out.append(ib.toString());
+            out.append("\n");
+        }
+        out.append("\n");
     }
 
     /** Llena la lista data en binario con las variables de la tabla semántica */
     public void generarSegmentoDatos() {
         offsetVar = 0;
+        data.clear();
         ArrayList<String> nombresProcesados = new ArrayList<>();
         for (Simbolo s : tablaSemantica) {
             if (nombresProcesados.contains(s.nombre)) {
@@ -125,6 +128,7 @@ public class Objeto {
     
     /** Llena la lista code en binario con las instrucciones de la tabla de instrucciones creada */
     public void generarSegmentoCode() {
+        temp.clear();
         extraerInstrucciones();  
         offsetIns = 0;
         instrucciones.clear();
@@ -185,10 +189,7 @@ public class Objeto {
     private void procesarMOV(String op1, String op2, ArrayList<Bit8> bytesInstr) {
         // MOV AX, @data
         if (op1.equals("AX") && op2.equalsIgnoreCase("@data")) {
-            agregarBytes(bytesInstr, OP_MOV_AX_IMM);          
-            Bit8[] imm16 = decimalABinario16(0);
-            agregarBytes(bytesInstr, imm16);
-            agregarInstruccion(bytesInstr);
+            emitirConImm16(bytesInstr, OP_MOV_AX_IMM, 0);
             return;
         }
         
@@ -201,63 +202,52 @@ public class Objeto {
 
         // MOV AX, 4C00h
         if (op1.equals("AX") && op2.equals("4C00h")) {
-            agregarBytes(bytesInstr, OP_MOV_AX_400C);
-            int valor = Integer.parseInt("19456");
-            Bit8[] imm16 = decimalABinario16(valor);
-            agregarBytes(bytesInstr, imm16);
-            agregarInstruccion(bytesInstr);
+            emitirConImm16(bytesInstr, OP_MOV_AX_400C, 19456);
             return;
         }
 
         // MOV AX, inm16
         if (op1.equals("AX") && esEntero(op2)) {
-            agregarBytes(bytesInstr, OP_MOV_AX_IMM);
-            int valor = Integer.parseInt(op2);
-            Bit8[] imm16 = decimalABinario16(valor);
-            agregarBytes(bytesInstr, imm16);
-            agregarInstruccion(bytesInstr);
+            emitirConImm16(bytesInstr, OP_MOV_AX_IMM, Integer.parseInt(op2));
             return;
         }
 
-        // MOV var, AX
+        // MOV var, AX usa el opcode corto A3 para el acumulador.
         if (!op1.isEmpty() && op2.equals("AX") && esVarEnteraOBool(op1)) {
-            agregarBytes(bytesInstr, OP_MOV_MEM_AX);
-            int off = getOffsetVar(op1);
-            Bit8[] desp = offsetBin(off);
-            agregarBytes(bytesInstr, desp);
-            agregarInstruccion(bytesInstr);
+            emitirConDireccion(bytesInstr, OP_MOV_MEM_AX_CORTO, op1);
             return;
         }
 
-        // MOV AX, var
+        // MOV AX, var usa el opcode corto A1 para el acumulador.
         if (op1.equals("AX") && !op2.isEmpty() && !esEntero(op2) 
                 && esVarEnteraOBool(op2)) {
-            agregarBytes(bytesInstr, OP_MOV_AX_MEM);
-            int off = getOffsetVar(op2);
-            Bit8[] desp = offsetBin(off);
-            agregarBytes(bytesInstr, desp);
-            agregarInstruccion(bytesInstr);
+            emitirConDireccion(bytesInstr, OP_MOV_AX_MEM_CORTO, op2);
             return;
         }
 
-        // MOV DX, var
+        // MOV AL, var usa el opcode corto A0 para variables de 8 bits.
+        if (op1.equals("AL") && !op2.isEmpty() && !esEntero(op2) 
+                && getSizeVar(op2) == 1) {
+            emitirConDireccion(bytesInstr, OP_MOV_AL_MEM_CORTO, op2);
+            return;
+        }
+
+        // MOV var, AL usa el opcode corto A2 para variables de 8 bits.
+        if (!op1.isEmpty() && op2.equals("AL") && getSizeVar(op1) == 1) {
+            emitirConDireccion(bytesInstr, OP_MOV_MEM_AL_CORTO, op1);
+            return;
+        }
+
+        // MOV DX, var usa el formato general 8B + ModR/M.
         if (op1.equals("DX") && !op2.isEmpty() && !esEntero(op2)
                 && esVarEnteraOBool(op2)) {
-            agregarBytes(bytesInstr, OP_MOV_DX_MEM);
-            int off = getOffsetVar(op2);
-            Bit8[] desp = offsetBin(off);
-            agregarBytes(bytesInstr, desp);
-            agregarInstruccion(bytesInstr);
+            emitirConDireccion(bytesInstr, OP_MOV_DX_MEM, op2);
             return;
         }
 
         // MOV DX, inm16
         if (op1.equals("DX") && esEntero(op2)) {
-            agregarBytes(bytesInstr, OP_MOV_DX_IMM);
-            int valor = Integer.parseInt(op2);
-            Bit8[] imm16 = decimalABinario16(valor);
-            agregarBytes(bytesInstr, imm16);
-            agregarInstruccion(bytesInstr);
+            emitirConImm16(bytesInstr, OP_MOV_DX_IMM, Integer.parseInt(op2));
             return;
         }
 
@@ -270,17 +260,9 @@ public class Objeto {
                 int off = getOffsetVar(op1);
 
                 if (size == 1) {
-                    agregarBytes(bytesInstr, OP_MOV_MEM_IMM8);
-                    Bit8[] imm8 = decimalABinario(valor & 0xFF);
-                    agregarBytes(bytesInstr, imm8);
-                    Bit8[] desp = offsetBin(off);
-                    agregarBytes(bytesInstr, desp);
+                    emitirConDireccionYDato(bytesInstr, OP_MOV_MEM_IMM8, off, decimalABinario(valor & 0xFF));
                 } else { // size == 2
-                    agregarBytes(bytesInstr, OP_MOV_MEM_IMM16);
-                    Bit8[] imm16 = decimalABinario16(valor);
-                    agregarBytes(bytesInstr, imm16);
-                    Bit8[] desp = offsetBin(off);
-                    agregarBytes(bytesInstr, desp);
+                    emitirConDireccionYDato(bytesInstr, OP_MOV_MEM_IMM16, off, decimalABinario16(valor));
                 }
                 agregarInstruccion(bytesInstr);
                 return;
@@ -306,7 +288,7 @@ public class Objeto {
         if (!op1.isEmpty() && op2.equals("AX")) {
             agregarBytes(bytesInstr, OP_ADD_MEM_AX);
             int off = getOffsetVar(op1);
-            Bit8[] desp = offsetBin(off);
+            Bit8[] desp = direccionBin(off);
             agregarBytes(bytesInstr, desp);
             agregarInstruccion(bytesInstr);
             return;
@@ -316,7 +298,7 @@ public class Objeto {
         if (op1.equals("AX") && !op2.isEmpty() && !esEntero(op2)) {
             agregarBytes(bytesInstr, OP_ADD_AX_MEM);
             int off = getOffsetVar(op2);
-            Bit8[] desp = offsetBin(off);
+            Bit8[] desp = direccionBin(off);
             agregarBytes(bytesInstr, desp);
             agregarInstruccion(bytesInstr);
             return;
@@ -331,7 +313,7 @@ public class Objeto {
                 int valor = Integer.parseInt(op2);
                 int off = getOffsetVar(op1);
                 agregarBytes(bytesInstr, OP_ADD_MEM_IMM16);
-                Bit8[] desp = offsetBin(off);
+                Bit8[] desp = direccionBin(off);
                 agregarBytes(bytesInstr, desp);
                 Bit8[] imm16 = decimalABinario16(valor);
                 agregarBytes(bytesInstr, imm16);
@@ -358,7 +340,7 @@ public class Objeto {
         if (!op1.isEmpty() && op2.equals("AX")) {
             agregarBytes(bytesInstr, OP_SUB_MEM_AX);
             int off = getOffsetVar(op1);
-            Bit8[] desp = offsetBin(off);
+            Bit8[] desp = direccionBin(off);
             agregarBytes(bytesInstr, desp);
             agregarInstruccion(bytesInstr);
             return;
@@ -368,7 +350,7 @@ public class Objeto {
         if (op1.equals("AX") && !op2.isEmpty() && !esEntero(op2)) {
             agregarBytes(bytesInstr, OP_SUB_AX_MEM);
             int off = getOffsetVar(op2);
-            Bit8[] desp = offsetBin(off);
+            Bit8[] desp = direccionBin(off);
             agregarBytes(bytesInstr, desp);
             agregarInstruccion(bytesInstr);
             return;
@@ -383,7 +365,7 @@ public class Objeto {
                 int valor = Integer.parseInt(op2);
                 int off = getOffsetVar(op1);
                 agregarBytes(bytesInstr, OP_SUB_MEM_IMM16);
-                Bit8[] desp = offsetBin(off);
+                Bit8[] desp = direccionBin(off);
                 agregarBytes(bytesInstr, desp);
                 Bit8[] imm16 = decimalABinario16(valor);
                 agregarBytes(bytesInstr, imm16);
@@ -454,8 +436,8 @@ public class Objeto {
             return;
         }
 
-        // desplazamiento temporal = 0
-        Bit8[] desp0 = offsetBin(0);
+        // desplazamiento temporal = 0 en Little Endian: PB, PA
+        Bit8[] desp0 = direccionBin(0);
         agregarBytes(bytesInstr, desp0);
 
         // offset actual de ESTE salto (antes de agregarlo a la lista)
@@ -482,7 +464,25 @@ public class Objeto {
         offsetIns += bytesInstruccion.size(); 
     }
 
-    /** Revisa si una cadena es un entero válido */
+    private void emitirConDireccion(ArrayList<Bit8> bytesInstr, Bit8[] opcode, String nombreVar) {
+        agregarBytes(bytesInstr, opcode);
+        agregarBytes(bytesInstr, direccionBin(getOffsetVar(nombreVar)));
+        agregarInstruccion(bytesInstr);
+    }
+
+    private void emitirConImm16(ArrayList<Bit8> bytesInstr, Bit8[] opcode, int valor) {
+        agregarBytes(bytesInstr, opcode);
+        agregarBytes(bytesInstr, decimalABinario16(valor));
+        agregarInstruccion(bytesInstr);
+    }
+
+    private void emitirConDireccionYDato(ArrayList<Bit8> bytesInstr, Bit8[] opcode, int offset, Bit8[] dato) {
+        agregarBytes(bytesInstr, opcode);
+        agregarBytes(bytesInstr, direccionBin(offset));
+        agregarBytes(bytesInstr, dato);
+    }
+
+    /** Revisa si una cadena es un entero valido. */
     private boolean esEntero(String s) {
         try {
             Integer.parseInt(s);
@@ -496,7 +496,12 @@ public class Objeto {
     private int getOffsetVar(String nombreVar) {
         int offset = 0;
         if (tablaSemantica == null) return 0;
+        ArrayList<String> nombresProcesados = new ArrayList<>();
         for (Simbolo s : tablaSemantica) {
+            if (nombresProcesados.contains(s.nombre)) {
+                continue;
+            }
+            nombresProcesados.add(s.nombre);
             int size = tamanoTipo(s);
 
             if (s.nombre.equals(nombreVar)) {
@@ -504,6 +509,7 @@ public class Objeto {
             }
             offset += size;
         }
+        out.append("[OBJETO] variable no encontrada: " + nombreVar + "\n");
         return 0;
     }
 
@@ -588,27 +594,21 @@ public class Objeto {
                 continue;
             }
 
-            int disp = offsetDestino;
-            Bit8[] despBits = offsetBin(disp);
+            int disp = offsetDestino - sp.offsetNext;
+            Bit8[] despBits = direccionBin(disp);
             InstruccionBin ins = instrucciones.get(sp.indiceInstr);
             ArrayList<Bit8> lista = ins.instruccion;
             int n = lista.size();
-            lista.set(n - 1, despBits[1]); // high
-            lista.set(n - 2, despBits[0]); // low
+            lista.set(n - 2, despBits[0]); // PB
+            lista.set(n - 1, despBits[1]); // PA
         }
     }
 
     /** Devuelve el tamaño en bytes del tipo de dato del símbolo. */
     private int tamanoTipo(Simbolo s) { 
-        String t = s.tipo.toLowerCase();
-        switch (t) {
-        case "int":
-            return 2;
-        case "boolean":
-            return 1; 
-        default:
-            return 0;
-        }
+        return s.tipo.equalsIgnoreCase("int") ? 2
+                : s.tipo.equalsIgnoreCase("boolean") ? 1
+                : 0;
     }
 
     /** Agrega todos los bytes al ArrayList destino */
@@ -628,6 +628,11 @@ public class Objeto {
         bytes[0] = binAByte(high);
         bytes[1] = binAByte(low);
         return bytes;
+    }
+
+    /** Direccion/desplazamiento de 16 bits en formato x86: byte bajo, byte alto. */
+    private Bit8[] direccionBin(int numero) {
+        return decimalABinario16(numero);
     }
 
     /** Decimal a 8-bits */
@@ -739,6 +744,18 @@ public class Objeto {
     public static final Bit8[] OP_MOV_MEM_AX = bits(
             "10001001",
             "00000110"
+            );
+    public static final Bit8[] OP_MOV_AL_MEM_CORTO = bits(
+            "10100000"
+            );
+    public static final Bit8[] OP_MOV_AX_MEM_CORTO = bits(
+            "10100001"
+            );
+    public static final Bit8[] OP_MOV_MEM_AL_CORTO = bits(
+            "10100010"
+            );
+    public static final Bit8[] OP_MOV_MEM_AX_CORTO = bits(
+            "10100011"
             );
     public static final Bit8[] OP_MOV_AX_IMM = bits(
             "10111000"

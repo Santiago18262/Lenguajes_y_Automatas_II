@@ -1,7 +1,8 @@
 class Test { 
     int x;
+    int y;
     boolean b; 
-    while (x < b) {
+    while (x < y) {
     } 
 }
 EOF

@@ -31,8 +31,19 @@ public class Intermedio {
     // Crea una variable temporal para guardar resultados intermedios de operaciones
     private String nuevaTemporal() {
         String nombre = "T" + contadorTemporales++;
-        tablaSemantica.add(new Simbolo(nombre, "int", "?", 0)); 
+        if (!existeSimbolo(nombre)) {
+            tablaSemantica.add(new Simbolo(nombre, "int", "?", 0));
+        }
         return nombre;
+    }
+
+    private boolean existeSimbolo(String nombre) {
+        for (Simbolo s : tablaSemantica) {
+            if (s.getNombre().equals(nombre)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void imprimirTodo() {         
@@ -44,6 +55,7 @@ public class Intermedio {
         
         // Se reinicia el análisis para generar ahora el código final
         this.out = finalOut; 
+        this.out.setText(""); // Limpiar el área de texto antes de imprimir el código final
         this.contadorTemporales = 0;
         this.posicionActual = 0; 
         
